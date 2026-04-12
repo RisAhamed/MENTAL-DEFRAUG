@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+function isValidEmail(email: string) {
+  const trimmedEmail = email.trim()
+  const atIndex = trimmedEmail.indexOf('@')
+  const dotAfterAtIndex = trimmedEmail.indexOf('.', atIndex + 1)
+  return atIndex > 0 && dotAfterAtIndex > atIndex + 1 && dotAfterAtIndex < trimmedEmail.length - 1
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { email, userId } = await request.json()
@@ -9,21 +16,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    if (typeof email !== 'string' || !isValidEmail(email)) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
+    }
+
     const supabase = await createClient()
+    const trimmedEmail = email.trim()
 
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: trimmedEmail,
       options: {
         emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
-        data: { anonymous_user_id: userId },
+        data: { anonymousUserId: userId },
       },
     })
 
     if (error) throw error
 
     const response = NextResponse.json({ success: true })
-    response.cookies.set('anonymous_user_id', userId, {
-      maxAge: 600, // 10 minutes
+    response.cookies.set('anon_user_id', userId, {
+      httpOnly: true,
+      maxAge: 60 * 30,
       path: '/',
       sameSite: 'lax',
     })

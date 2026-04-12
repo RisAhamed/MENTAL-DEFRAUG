@@ -48,7 +48,7 @@ export function StreakDisplay({ stats, newBadges }: StreakDisplayProps) {
       {/* Badges */}
       {allBadges.length > 0 && (
         <div className="flex flex-wrap gap-3 justify-center mt-2">
-          {allBadges.map((badgeId) => {
+          {allBadges.map((badgeId, index) => {
             const badge = BADGE_MAP[badgeId]
             if (!badge) return null
             const isNew = newBadges.includes(badgeId)
@@ -57,7 +57,7 @@ export function StreakDisplay({ stats, newBadges }: StreakDisplayProps) {
                 key={badgeId}
                 initial={isNew ? { scale: 0 } : { scale: 1 }}
                 animate={{ scale: 1 }}
-                transition={isNew ? { type: 'spring', stiffness: 300, damping: 15, delay: 0.2 } : {}}
+                transition={isNew ? { type: 'spring', stiffness: 300, damping: 15, delay: index * 0.1 } : {}}
                 className="flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-3 py-1.5"
               >
                 <span className="text-sm">{badge.emoji}</span>

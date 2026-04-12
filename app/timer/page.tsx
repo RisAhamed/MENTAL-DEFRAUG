@@ -54,13 +54,22 @@ export default function TimerPage() {
 
       const data = await res.json()
 
-      // Store session result in sessionStorage for done page
-      sessionStorage.setItem('defrag_result', JSON.stringify({
+      if (!res.ok) throw new Error(data?.error || 'Failed to save session')
+
+      const sessionResult = {
         sessionId: data.sessionId,
         pointsEarned: data.pointsEarned,
         newStreak: data.newStreak,
+        longestStreak: data.longestStreak,
         newBadges: data.newBadges,
-      }))
+        totalPoints: data.totalPoints,
+        totalSessions: data.totalSessions,
+        todaySessionCount: data.todaySessionCount,
+        userEmail: data.userEmail,
+      }
+
+      const serializedResult = encodeURIComponent(JSON.stringify(sessionResult))
+      document.cookie = `session_result=${serializedResult}; path=/; max-age=1800; samesite=lax`
 
       router.push('/done')
     } catch {

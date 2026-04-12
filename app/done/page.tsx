@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { AnimatePresence, motion } from 'framer-motion'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { AnimatePresence, animate, motion } from 'framer-motion'
 import { Brain } from 'lucide-react'
 import { StreakDisplay } from '@/components/StreakDisplay'
 import { FeelingCheck } from '@/components/FeelingCheck'
@@ -14,17 +14,25 @@ interface SessionResult {
   sessionId: string
   pointsEarned: number
   newStreak: number
+  longestStreak: number
   newBadges: string[]
+  totalPoints: number
+  totalSessions: number
+  todaySessionCount?: number
+  userEmail?: string | null
 }
 
-export default function DonePage() {
+function DonePageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [result, setResult] = useState<SessionResult | null>(null)
   const [stats, setStats] = useState<UserStats | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [showEmail, setShowEmail] = useState(false)
   const [feelingSubmitted, setFeelingSubmitted] = useState(false)
   const [showStreakPopup, setShowStreakPopup] = useState(false)
+  const [showLinkedBanner, setShowLinkedBanner] = useState(false)
+  const [displayPoints, setDisplayPoints] = useState(0)
 
   useEffect(() => {
     async function init() {
@@ -32,12 +40,19 @@ export default function DonePage() {
         const id = await getOrCreateAnonymousUser()
         setUserId(id)
 
-        // Read session result from sessionStorage
-        const storedResult = sessionStorage.getItem('defrag_result')
+        // Read session result from cookie, with a sessionStorage fallback for older in-flight sessions.
+        const cookieResult = document.cookie
+          .split('; ')
+          .find((row) => row.startsWith('session_result='))
+        const storedResult = cookieResult
+          ? decodeURIComponent(cookieResult.split('=')[1])
+          : sessionStorage.getItem('defrag_result')
+
         let sessionResult: SessionResult | null = null
         if (storedResult) {
           sessionResult = JSON.parse(storedResult)
           setResult(sessionResult)
+          document.cookie = 'session_result=; path=/; max-age=0; samesite=lax'
           sessionStorage.removeItem('defrag_result')
           sessionStorage.removeItem('defrag_protocol')
           sessionStorage.removeItem('defrag_input')
@@ -48,18 +63,23 @@ export default function DonePage() {
         const sessionCount = await getUserSessionCount(id)
         if (userStats) {
           const fullStats: UserStats = {
-            totalPoints: userStats.total_points ?? 0,
+            totalPoints: sessionResult?.totalPoints ?? userStats.total_points ?? 0,
             currentStreak: sessionResult?.newStreak ?? userStats.current_streak ?? 0,
-            longestStreak: userStats.longest_streak ?? 0,
+            longestStreak: sessionResult?.longestStreak ?? userStats.longest_streak ?? 0,
             lastDefragDate: userStats.last_defrag_date,
             badges: userStats.badges ?? [],
-            totalSessions: sessionCount,
+            totalSessions: sessionResult?.totalSessions ?? sessionCount,
             fatigueBreakdown: { LOGIC: 0, NARRATIVE: 0, VISUAL: 0, EMOTIONAL: 0 },
           }
           setStats(fullStats)
 
           // Show email capture if session 3+ and no email stored
-          if (sessionCount >= 3 && !userStats.email && !localStorage.getItem('mental_defrag_email_dismissed')) {
+          if (
+            (sessionResult?.totalSessions ?? sessionCount) >= 3 &&
+            !sessionResult?.userEmail &&
+            !userStats.email &&
+            !localStorage.getItem('email_capture_dismissed')
+          ) {
             setShowEmail(true)
           }
         }
@@ -72,7 +92,12 @@ export default function DonePage() {
     setFeelingSubmitted(true)
   }
 
+  const handleEmailSuccess = () => {
+    setShowEmail(true)
+  }
+
   const visibleStreak = Math.max(result?.newStreak ?? stats?.currentStreak ?? 1, 1)
+  const todaySessionDisplay = result?.todaySessionCount ?? result?.totalSessions ?? stats?.totalSessions ?? 1
 
   useEffect(() => {
     if (!result) return
@@ -86,8 +111,41 @@ export default function DonePage() {
     }
   }, [result])
 
+  useEffect(() => {
+    if (!result) return
+
+    const controls = animate(0, result.pointsEarned, {
+      duration: 0.9,
+      ease: 'easeOut',
+      onUpdate: (latest) => setDisplayPoints(Math.round(latest)),
+    })
+
+    return () => controls.stop()
+  }, [result])
+
+  useEffect(() => {
+    if (searchParams.get('linked') !== 'true') return
+
+    setShowLinkedBanner(true)
+    const hideDelay = setTimeout(() => setShowLinkedBanner(false), 4000)
+    return () => clearTimeout(hideDelay)
+  }, [searchParams])
+
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
+      <AnimatePresence>
+        {showLinkedBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="fixed left-1/2 top-5 z-50 w-[calc(100%-32px)] max-w-md -translate-x-1/2 rounded-lg border border-[#4CAF7D]/40 bg-[#101510]/95 px-4 py-3 text-center text-sm font-medium text-white shadow-2xl shadow-black/40"
+          >
+            ✅ Your streak is now saved across all your devices
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showStreakPopup && result && (
           <motion.div
@@ -133,7 +191,7 @@ export default function DonePage() {
         </motion.div>
         <h1 className="text-2xl font-bold text-white mt-4">Defrag Complete</h1>
         <p className="text-sm text-white/40 mt-1">
-          Session {stats?.totalSessions ?? 1} today
+          Session {todaySessionDisplay} today
         </p>
       </motion.div>
 
@@ -153,7 +211,7 @@ export default function DonePage() {
           className="mb-8"
         >
           <p className="text-lg text-white font-semibold">
-            +{result.pointsEarned} Brain Points
+            +{displayPoints} Brain Points
           </p>
         </motion.div>
       )}
@@ -173,7 +231,7 @@ export default function DonePage() {
         <div className="mb-8">
           <EmailCapture
             userId={userId}
-            onSuccess={() => setShowEmail(false)}
+            onSuccess={handleEmailSuccess}
             onDismiss={() => setShowEmail(false)}
           />
         </div>
@@ -190,5 +248,19 @@ export default function DonePage() {
         <p className="text-xs text-white/30">Come back after your next heavy session</p>
       </div>
     </main>
+  )
+}
+
+export default function DonePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center px-4">
+          <p className="text-sm text-white/50">Loading completion...</p>
+        </main>
+      }
+    >
+      <DonePageContent />
+    </Suspense>
   )
 }

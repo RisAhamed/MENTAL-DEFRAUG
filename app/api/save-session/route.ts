@@ -11,6 +11,44 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient()
+    const today = new Date().toISOString().split('T')[0]
+
+    const [
+      { count: existingTodayCount, error: todayCountError },
+      { count: existingTotalCount, error: totalCountError },
+      { data: userData, error: userError },
+    ] = await Promise.all([
+      supabase
+        .from('sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', today),
+      supabase
+        .from('sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId),
+      supabase
+        .from('users')
+        .select('current_streak, longest_streak, last_defrag_date, badges, total_points, email')
+        .eq('id', userId)
+        .single(),
+    ])
+
+    if (todayCountError) throw todayCountError
+    if (totalCountError) throw totalCountError
+    if (userError) throw userError
+
+    const todaySessionCount = (existingTodayCount ?? 0) + 1
+    const totalSessions = (existingTotalCount ?? 0) + 1
+
+    const currentStreak = userData?.current_streak ?? 0
+    const lastDefragDate = userData?.last_defrag_date ?? null
+    const currentBadges: string[] = userData?.badges ?? []
+
+    // Calculate points and streak
+    const pointsEarned = calculatePoints(timerCompleted, todaySessionCount)
+    const newStreak = calculateStreak(lastDefragDate, currentStreak)
+    const newBadges = checkNewBadges(currentBadges, newStreak, totalSessions)
 
     // Insert session
     const { data: session, error: insertError } = await supabase
@@ -23,61 +61,28 @@ export async function POST(request: NextRequest) {
         protocol,
         timer_completed: timerCompleted,
         feeling_after: null,
-        points_earned: 0,
+        points_earned: pointsEarned,
       })
       .select('id')
       .single()
 
     if (insertError) throw insertError
 
-    // Get today's session count for this user
-    const today = new Date().toISOString().split('T')[0]
-    const { count: todayCount } = await supabase
-      .from('sessions')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .gte('created_at', today)
-
-    const todaySessionCount = (todayCount ?? 0)
-
-    // Get total session count
-    const { count: totalCount } = await supabase
-      .from('sessions')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-
-    const totalSessions = totalCount ?? 0
-
-    // Get user stats for streak/badge calculation
-    const { data: userData } = await supabase
-      .from('users')
-      .select('current_streak, last_defrag_date, badges')
-      .eq('id', userId)
-      .single()
-
-    const currentStreak = userData?.current_streak ?? 0
-    const lastDefragDate = userData?.last_defrag_date ?? null
-    const currentBadges: string[] = userData?.badges ?? []
-
-    // Calculate points and streak
-    const pointsEarned = calculatePoints(timerCompleted, todaySessionCount)
-    const newStreak = calculateStreak(lastDefragDate, currentStreak)
-    const newBadges = checkNewBadges(currentBadges, newStreak, totalSessions)
-
-    // Update the session with points
-    await supabase
-      .from('sessions')
-      .update({ points_earned: pointsEarned })
-      .eq('id', session.id)
-
     // Update user stats
-    await updateUserStats(userId, pointsEarned, newStreak, newBadges)
+    const updatedStats = await updateUserStats(userId, pointsEarned, newStreak, newBadges)
+    const longestStreak = updatedStats?.longestStreak ?? Math.max(userData?.longest_streak ?? 0, newStreak)
+    const totalPoints = updatedStats?.totalPoints ?? (userData?.total_points ?? 0) + pointsEarned
 
     return NextResponse.json({
       sessionId: session.id,
       pointsEarned,
       newStreak,
+      longestStreak,
       newBadges,
+      totalPoints,
+      totalSessions,
+      todaySessionCount,
+      userEmail: userData?.email ?? null,
     })
   } catch (error) {
     console.error('Save session error:', error)

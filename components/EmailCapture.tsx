@@ -8,7 +8,14 @@ interface EmailCaptureProps {
   onDismiss: () => void
 }
 
-const DISMISS_KEY = 'mental_defrag_email_dismissed'
+const DISMISS_KEY = 'email_capture_dismissed'
+
+function isValidEmail(email: string) {
+  const trimmedEmail = email.trim()
+  const atIndex = trimmedEmail.indexOf('@')
+  const dotAfterAtIndex = trimmedEmail.indexOf('.', atIndex + 1)
+  return atIndex > 0 && dotAfterAtIndex > atIndex + 1 && dotAfterAtIndex < trimmedEmail.length - 1
+}
 
 export function EmailCapture({ userId, onSuccess, onDismiss }: EmailCaptureProps) {
   const [email, setEmail] = useState('')
@@ -18,7 +25,10 @@ export function EmailCapture({ userId, onSuccess, onDismiss }: EmailCaptureProps
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim()) return
+    if (!isValidEmail(email)) {
+      setError('Enter a valid email address.')
+      return
+    }
 
     setLoading(true)
     setError('')
@@ -30,7 +40,8 @@ export function EmailCapture({ userId, onSuccess, onDismiss }: EmailCaptureProps
         body: JSON.stringify({ email: email.trim(), userId }),
       })
 
-      if (!res.ok) throw new Error('Failed to send')
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'Failed to send')
 
       setSent(true)
       onSuccess()
@@ -49,7 +60,7 @@ export function EmailCapture({ userId, onSuccess, onDismiss }: EmailCaptureProps
   if (sent) {
     return (
       <div className="rounded-xl border border-white/10 p-5 text-center max-w-md mx-auto">
-        <p className="text-sm text-white/80">Check your email for a magic link ✉️</p>
+        <p className="text-sm text-white/80">✉️ Check your inbox for a magic link</p>
       </div>
     )
   }
@@ -57,7 +68,7 @@ export function EmailCapture({ userId, onSuccess, onDismiss }: EmailCaptureProps
   return (
     <div className="rounded-xl border border-white/10 p-5 max-w-md mx-auto">
       <h3 className="text-base font-semibold text-white mb-1">Save your streak across all devices</h3>
-      <p className="text-xs text-white/50 mb-4">We&apos;ll also send you a weekly brain performance summary</p>
+      <p className="text-xs text-white/50 mb-4">We&apos;ll send you a weekly brain performance summary</p>
 
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
@@ -66,11 +77,12 @@ export function EmailCapture({ userId, onSuccess, onDismiss }: EmailCaptureProps
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@email.com"
           required
+          aria-invalid={!!error}
           className="flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
         />
         <button
           type="submit"
-          disabled={loading || !email.trim()}
+          disabled={loading || !isValidEmail(email)}
           className="rounded-lg bg-white text-black px-4 py-2 text-sm font-medium hover:bg-white/90 transition-colors disabled:opacity-50"
         >
           {loading ? 'Sending...' : 'Send Magic Link'}

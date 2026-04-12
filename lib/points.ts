@@ -19,6 +19,8 @@ export function calculateStreak(
 
   const last = new Date(lastDefragDate)
   const today = new Date()
+  last.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)
   const diffDays = Math.floor(
     (today.getTime() - last.getTime()) / 86400000
   )
@@ -54,7 +56,7 @@ export async function updateUserStats(
   pointsEarned: number,
   newStreak: number,
   newBadges: string[]
-) {
+): Promise<{ totalPoints: number; longestStreak: number; badges: string[] } | null> {
   const supabase = createAdminClient()
 
   const stats = await supabase
@@ -63,19 +65,24 @@ export async function updateUserStats(
     .eq('id', userId)
     .single()
 
-  if (!stats.data) return
+  if (!stats.data) return null
 
-  const updatedBadges = [...(stats.data.badges || []), ...newBadges]
+  const updatedBadges = [...new Set([...(stats.data.badges || []), ...newBadges])]
+  const totalPoints = (stats.data.total_points || 0) + pointsEarned
   const longestStreak = Math.max(stats.data.longest_streak || 0, newStreak)
 
-  await supabase
+  const { error } = await supabase
     .from('users')
     .update({
-      total_points: (stats.data.total_points || 0) + pointsEarned,
+      total_points: totalPoints,
       current_streak: newStreak,
       longest_streak: longestStreak,
       last_defrag_date: new Date().toISOString().split('T')[0],
       badges: updatedBadges,
     })
     .eq('id', userId)
+
+  if (error) throw error
+
+  return { totalPoints, longestStreak, badges: updatedBadges }
 }
