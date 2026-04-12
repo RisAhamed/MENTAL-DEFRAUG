@@ -1,55 +1,120 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from '@google/generative-ai'
+import { DefragProtocol } from '@/types'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
-export async function classifyAndGenerateProtocol(userInput: string) {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-pro",
-    generationConfig: { responseMimeType: "application/json" }
-  });
+const FALLBACK_PROTOCOL: DefragProtocol = {
+  fatigueType: 'LOGIC',
+  intensity: 'HEAVY',
+  headline: 'Heavy Logic Fatigue',
+  instagramWarning: 'Opening Instagram now shifts your prefrontal cortex into reward-seeking mode, preventing the default mode network from restoring your depleted working memory.',
+  steps: [
+    {
+      duration: '0–3 min',
+      action: 'Stand up and walk to a window. Look at the farthest point outside for 60 seconds without focusing on any object.',
+      why: 'Distance viewing deactivates the foveal overdrive in your visual cortex caused by hours of screen focus.',
+      avoid: "Don't check your phone — blue light resets your melatonin recovery cycle.",
+    },
+    {
+      duration: '3–7 min',
+      action: 'Sit back down, close your eyes, and hum a single low note for 2 minutes. Then do 10 slow neck rolls.',
+      why: 'Vagal tone from humming activates your parasympathetic nervous system, countering the sympathetic overdrive from debugging.',
+      avoid: "Don't listen to music with lyrics — language processing re-engages Broca's area.",
+    },
+    {
+      duration: '7–10 min',
+      action: 'Drink a full glass of water slowly. Then place both palms flat on a table and press down for 30 seconds. Release and notice the warmth.',
+      why: 'Proprioceptive grounding redirects blood flow from the dorsolateral prefrontal cortex to somatosensory regions, accelerating recovery.',
+      avoid: "Don't read anything — even short text re-engages your depleted working memory circuits.",
+    },
+  ],
+  ambientColor: '#4CAF7D',
+}
 
-  const prompt = `
-You are a neuroscience-backed cognitive recovery specialist.
+export async function classifyAndGenerateProtocol(
+  userInput: string
+): Promise<DefragProtocol> {
+  try {
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.7,
+      },
+    })
 
-A student just described their mental state: "${userInput}"
+    const prompt = `
+You are a neuroscience-backed cognitive recovery specialist with deep knowledge of how different types of mental work deplete different brain regions, and what specific recovery activities restore them fastest.
 
-You MUST do the following — do not skip any step:
+A student just finished a session and described it as:
+"${userInput}"
 
-STEP 1: Classify fatigue into EXACTLY ONE of:
-- LOGIC (coding, math, debugging, algorithms, problem-solving)
-- NARRATIVE (reading textbooks, writing essays, memorizing, history)
-- VISUAL (UI design, video editing, diagrams, watching tutorials)  
-- EMOTIONAL (exams, group conflict, presentations, anxiety, stress)
-If ambiguous, you MUST still choose the closest match. Never return null.
+You MUST complete ALL four steps below. Do not skip any.
 
-STEP 2: Classify intensity as LIGHT, MODERATE, or HEAVY based on:
-- Duration clues (e.g. "30 min" = LIGHT, "2 hours" = MODERATE, "all day" = HEAVY)
-- Emotional language ("completely blank", "fried", "exhausted" = HEAVY)
+STEP 1 — CLASSIFY FATIGUE TYPE
+Map the input to EXACTLY ONE of these four types:
+- LOGIC: coding, debugging, math, algorithms, problem-solving, data analysis
+- NARRATIVE: reading textbooks, writing essays, memorizing facts, studying history, taking notes
+- VISUAL: UI/UX design, watching video tutorials, creating diagrams, video editing, presentations
+- EMOTIONAL: exam anxiety, group projects, presentations, conflict, social pressure, impostor syndrome
+Rule: If ambiguous, choose the CLOSEST match. Never return null or unknown.
 
-STEP 3: Generate a 3-step, 10-minute recovery protocol.
-Each step MUST:
-- Be hyper-specific (not "rest" — say exactly what to do and for how long)
-- Include WHY it helps this specific fatigue type in one sentence
-- Mention one thing NOT to do and why it delays recovery
+STEP 2 — CLASSIFY INTENSITY
+Choose exactly one: LIGHT, MODERATE, or HEAVY
+Signals for HEAVY: "all day", "3+ hours", "completely blank", "fried", "exhausted", "can't think"
+Signals for MODERATE: "couple hours", "pretty tired", "need a break"
+Signals for LIGHT: "30 minutes", "quick session", "a bit tired"
 
-STEP 4: Write a one-sentence "Instagram Warning" — what physically 
-happens to their brain if they open social media right now instead.
+STEP 3 — WRITE THE INSTAGRAM WARNING
+One sentence that explains exactly what happens neurologically if they open Instagram or YouTube RIGHT NOW. Make it specific and slightly alarming so they feel the consequence. Reference the specific brain region affected.
 
-Return ONLY valid JSON in this exact format:
+STEP 4 — GENERATE THE 3-STEP RECOVERY PROTOCOL
+Each step must be:
+- Hyper-specific (not "rest" — say exactly what position, duration, activity)
+- Include WHY it works for this specific fatigue type (one sentence, cite brain region)
+- Include one thing to AVOID during this step and why it sets back recovery
+Steps should be cumulative: 0-3 min, 3-7 min, 7-10 min
+
+AMBIENT COLOR RULES:
+- LOGIC → "#4CAF7D" (muted green — nature, movement, eyes forward)
+- NARRATIVE → "#3B6B9E" (deep blue — stillness, silence, closed eyes)
+- VISUAL → "#D4854A" (warm amber — soft, no screen contrast)
+- EMOTIONAL → "#7B5EA7" (soft purple — calm, grounding, safety)
+
+Return ONLY this exact JSON structure, nothing else:
 {
   "fatigueType": "LOGIC|NARRATIVE|VISUAL|EMOTIONAL",
   "intensity": "LIGHT|MODERATE|HEAVY",
-  "headline": "Short punchy label e.g. 'Heavy Logic Fatigue'",
-  "instagramWarning": "One sentence about what opening Instagram does right now",
+  "headline": "2-4 word label e.g. Heavy Logic Fatigue",
+  "instagramWarning": "Single sentence about neurological consequence",
   "steps": [
-    {"duration": "0–3 min", "action": "Exact action", "why": "Why this helps", "avoid": "What not to do"},
-    {"duration": "3–7 min", "action": "Exact action", "why": "Why this helps", "avoid": "What not to do"},
-    {"duration": "7–10 min", "action": "Exact action", "why": "Why this helps", "avoid": "What not to do"}
+    {
+      "duration": "0–3 min",
+      "action": "Extremely specific action with exact instructions",
+      "why": "One sentence citing specific brain region and recovery mechanism",
+      "avoid": "Specific thing to avoid and why it delays recovery"
+    },
+    {
+      "duration": "3–7 min",
+      "action": "Extremely specific action",
+      "why": "One sentence neuroscience explanation",
+      "avoid": "Specific avoidance with reason"
+    },
+    {
+      "duration": "7–10 min",
+      "action": "Extremely specific action",
+      "why": "One sentence neuroscience explanation",
+      "avoid": "Specific avoidance with reason"
+    }
   ],
-  "ambientColor": "hex color code — muted green for LOGIC, deep blue for NARRATIVE, warm amber for VISUAL, soft purple for EMOTIONAL"
+  "ambientColor": "#hexcode"
 }
-  `;
+`
 
-  const result = await model.generateContent(prompt);
-  return JSON.parse(result.response.text());
+    const result = await model.generateContent(prompt)
+    const text = result.response.text()
+    return JSON.parse(text) as DefragProtocol
+  } catch {
+    return FALLBACK_PROTOCOL
+  }
 }
