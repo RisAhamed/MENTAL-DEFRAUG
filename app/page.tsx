@@ -6,20 +6,19 @@ import { motion } from 'framer-motion'
 import { Brain, Info, Loader2 } from 'lucide-react'
 import { ShortcutChips } from '@/components/ShortcutChips'
 import { getOrCreateAnonymousUser, getUserStats, getUserSessionCount } from '@/lib/user'
-import { UserStats } from '@/types'
+import { DefragProtocol, UserStats } from '@/types'
 
 export default function HomePage() {
   const router = useRouter()
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [userId, setUserId] = useState<string | null>(null)
+  const [error, setError] = useState('')
   const [stats, setStats] = useState<UserStats | null>(null)
 
   useEffect(() => {
     async function init() {
       try {
         const id = await getOrCreateAnonymousUser()
-        setUserId(id)
         const userStats = await getUserStats(id)
         const sessionCount = await getUserSessionCount(id)
         if (userStats) {
@@ -39,8 +38,9 @@ export default function HomePage() {
   }, [])
 
   async function handleSubmit() {
-    if (!input.trim() || input.trim().length < 10 || !userId) return
+    if (!input.trim() || input.trim().length < 10) return
     setLoading(true)
+    setError('')
 
     try {
       const res = await fetch('/api/defrag', {
@@ -49,10 +49,20 @@ export default function HomePage() {
         body: JSON.stringify({ input: input.trim() }),
       })
 
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error || 'Failed to analyze fatigue')
+      }
+
+      const protocol: DefragProtocol = await res.json()
+
+      // Store in sessionStorage for subsequent pages
+      sessionStorage.setItem('defrag_protocol', JSON.stringify(protocol))
+      sessionStorage.setItem('defrag_input', input.trim())
 
       router.push('/result')
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
       setLoading(false)
     }
   }
@@ -98,6 +108,11 @@ export default function HomePage() {
         <div className="mt-4 w-full">
           <ShortcutChips onSelect={(text) => setInput(text)} />
         </div>
+
+        {/* Error */}
+        {error && (
+          <p className="text-red-400 text-sm mt-4">{error}</p>
+        )}
 
         {/* Submit */}
         <button

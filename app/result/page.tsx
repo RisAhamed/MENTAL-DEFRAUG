@@ -11,12 +11,9 @@ export default function ResultPage() {
 
   useEffect(() => {
     try {
-      const stored = document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('defrag_protocol='))
+      const stored = sessionStorage.getItem('defrag_protocol')
       if (stored) {
-        const parsed = JSON.parse(decodeURIComponent(stored.split('=')[1]))
-        setProtocol(parsed)
+        setProtocol(JSON.parse(stored))
       } else {
         router.push('/')
       }
@@ -36,6 +33,7 @@ export default function ResultPage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
       <FatigueCard protocol={protocol} />
+      <p className="text-xs text-white/30 mt-4">Only 10 minutes. Your brain will thank you.</p>
     </main>
   )
 }

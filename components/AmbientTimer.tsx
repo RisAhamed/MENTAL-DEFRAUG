@@ -1,8 +1,8 @@
 'use client'
 
 import { DefragProtocol } from '@/types'
-import { motion } from 'framer-motion'
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
 
 interface AmbientTimerProps {
   protocol: DefragProtocol
@@ -11,12 +11,13 @@ interface AmbientTimerProps {
 }
 
 const TOTAL_SECONDS = 600
-const STEP_BOUNDARIES = [0, 180, 420] // step starts at 0s, 180s (3min), 420s (7min)
 
 export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps) {
   const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS)
-  const [isRunning, setIsRunning] = useState(true)
+  const [isRunning] = useState(true)
+  const [showComplete, setShowComplete] = useState(false)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
+  const completedRef = useRef(false)
 
   const currentStep = timeLeft > 420 ? 0 : timeLeft > 180 ? 1 : 2
   const minutes = Math.floor(timeLeft / 60)
@@ -40,10 +41,7 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
   // Timer logic
   useEffect(() => {
     if (!isRunning) return
-    if (timeLeft <= 0) {
-      onComplete()
-      return
-    }
+    if (timeLeft <= 0) return
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
@@ -60,7 +58,16 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
 
   // Check completion
   useEffect(() => {
-    if (timeLeft === 0) onComplete()
+    if (timeLeft !== 0 || completedRef.current) return
+
+    completedRef.current = true
+    setShowComplete(true)
+
+    const completeDelay = setTimeout(() => {
+      onComplete()
+    }, 2200)
+
+    return () => clearTimeout(completeDelay)
   }, [timeLeft, onComplete])
 
   const bgColor = protocol.ambientColor + 'D9' // ~85% opacity
@@ -112,6 +119,42 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
       >
         skip
       </button>
+
+      <AnimatePresence>
+        {showComplete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.86, y: 18, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+              className="w-full max-w-sm rounded-lg border border-white/20 bg-black/50 p-6 text-center shadow-2xl"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.14, 1] }}
+                transition={{ duration: 0.8, repeat: 1, ease: 'easeInOut' }}
+                className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-3xl"
+              >
+                🧠
+              </motion.div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/50">
+                Defrag complete
+              </p>
+              <h2 className="mt-2 text-2xl font-bold text-white">
+                Your brain got its reset.
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-white/70">
+                You stayed with the recovery instead of switching screens. That is the rep.
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

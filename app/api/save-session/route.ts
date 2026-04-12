@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { calculatePoints, calculateStreak, checkNewBadges, updateUserStats } from '@/lib/points'
 
 export async function POST(request: NextRequest) {
   try {
     const { userId, inputText, fatigueType, intensity, protocol, timerCompleted } = await request.json()
 
-    if (!userId || !inputText || !fatigueType || !intensity || !protocol) {
+    if (!userId || !fatigueType || !intensity || !protocol) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // Insert session
     const { data: session, error: insertError } = await supabase

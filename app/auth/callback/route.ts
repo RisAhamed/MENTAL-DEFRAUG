@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { linkUserToEmail } from '@/lib/user'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
@@ -17,7 +17,11 @@ export async function GET(request: NextRequest) {
       if (anonymousUserId) {
         const { data: { user } } = await supabase.auth.getUser()
         if (user?.email) {
-          await linkUserToEmail(anonymousUserId, user.id, user.email)
+          const admin = createAdminClient()
+          await admin
+            .from('users')
+            .update({ email: user.email, auth_user_id: user.id })
+            .eq('id', anonymousUserId)
         }
       }
 

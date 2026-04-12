@@ -14,17 +14,7 @@ export async function POST(request: NextRequest) {
 
     const protocol = await classifyAndGenerateProtocol(input.trim())
 
-    const response = NextResponse.json(protocol)
-
-    // Store protocol in httpOnly cookie for result/timer pages (30 min expiry)
-    response.cookies.set('defrag_protocol', JSON.stringify(protocol), {
-      httpOnly: false,
-      maxAge: 1800,
-      path: '/',
-      sameSite: 'lax',
-    })
-
-    return response
+    return NextResponse.json(protocol)
   } catch (error) {
     console.error('Defrag API error:', error)
     return NextResponse.json(

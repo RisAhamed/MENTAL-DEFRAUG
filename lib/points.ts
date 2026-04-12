@@ -1,12 +1,5 @@
-import { createClient } from '@/lib/supabase/client'
-
-export const BADGES = {
-  FIRST_DEFRAG: { id: 'first_defrag', label: 'First Defrag', emoji: '🧠' },
-  THREE_DAY_STREAK: { id: 'three_day_streak', label: 'Warm Streak', emoji: '🔥' },
-  SEVEN_DAY_STREAK: { id: 'seven_day_streak', label: 'Defrag Habit', emoji: '⚡' },
-  FOURTEEN_DAY_STREAK: { id: 'fourteen_day_streak', label: 'Brain Athlete', emoji: '💎' },
-  TEN_SESSIONS: { id: 'ten_sessions', label: '10 Defrags', emoji: '🏆' },
-}
+import { createAdminClient } from '@/lib/supabase/admin'
+import { BADGES } from '@/lib/badges'
 
 export function calculatePoints(
   timerCompleted: boolean,
@@ -62,7 +55,7 @@ export async function updateUserStats(
   newStreak: number,
   newBadges: string[]
 ) {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const stats = await supabase
     .from('users')
@@ -73,7 +66,7 @@ export async function updateUserStats(
   if (!stats.data) return
 
   const updatedBadges = [...(stats.data.badges || []), ...newBadges]
-  const longestStreak = Math.max(stats.data.longest_streak, newStreak)
+  const longestStreak = Math.max(stats.data.longest_streak || 0, newStreak)
 
   await supabase
     .from('users')

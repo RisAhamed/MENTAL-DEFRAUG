@@ -18,13 +18,11 @@ export default function TimerPage() {
         setUserId(id)
       } catch {}
 
+      // Read protocol from sessionStorage (set by result page)
       try {
-        const stored = document.cookie
-          .split('; ')
-          .find((row) => row.startsWith('defrag_protocol='))
+        const stored = sessionStorage.getItem('defrag_protocol')
         if (stored) {
-          const parsed = JSON.parse(decodeURIComponent(stored.split('=')[1]))
-          setProtocol(parsed)
+          setProtocol(JSON.parse(stored))
         } else {
           router.push('/')
         }
@@ -39,12 +37,14 @@ export default function TimerPage() {
     if (!userId || !protocol) return
 
     try {
+      const inputText = sessionStorage.getItem('defrag_input') || ''
+
       const res = await fetch('/api/save-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          inputText: '', // Will be populated from the input page flow
+          inputText,
           fatigueType: protocol.fatigueType,
           intensity: protocol.intensity,
           protocol,
@@ -54,13 +54,13 @@ export default function TimerPage() {
 
       const data = await res.json()
 
-      // Store session result in cookie for done page
-      document.cookie = `defrag_result=${encodeURIComponent(JSON.stringify({
+      // Store session result in sessionStorage for done page
+      sessionStorage.setItem('defrag_result', JSON.stringify({
         sessionId: data.sessionId,
         pointsEarned: data.pointsEarned,
         newStreak: data.newStreak,
         newBadges: data.newBadges,
-      }))}; path=/; max-age=600`
+      }))
 
       router.push('/done')
     } catch {

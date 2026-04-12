@@ -1,7 +1,13 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { DefragProtocol } from '@/types'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+const API_KEY = process.env.GEMINI_API_KEY
+
+if (!API_KEY) {
+  throw new Error('GEMINI_API_KEY is not defined in environment variables')
+}
+
+const genAI = new GoogleGenerativeAI(API_KEY)
 
 const FALLBACK_PROTOCOL: DefragProtocol = {
   fatigueType: 'LOGIC',
@@ -34,6 +40,11 @@ const FALLBACK_PROTOCOL: DefragProtocol = {
 export async function classifyAndGenerateProtocol(
   userInput: string
 ): Promise<DefragProtocol> {
+  if (!genAI) {
+    console.error('[GEMINI] genAI not initialized')
+    return FALLBACK_PROTOCOL
+  }
+  
   try {
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.0-flash',

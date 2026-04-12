@@ -1,7 +1,7 @@
 'use client'
 
-import { UserStats, FatigueType } from '@/types'
-import { BADGES } from '@/lib/points'
+import { UserStats } from '@/types'
+import { BADGES } from '@/lib/badges'
 import { motion } from 'framer-motion'
 
 interface StreakDisplayProps {
@@ -20,8 +20,21 @@ export function StreakDisplay({ stats, newBadges }: StreakDisplayProps) {
     <div className="flex flex-col items-center gap-4">
       {/* Streak */}
       <div className="flex items-center gap-2">
-        <span className="text-3xl">🔥</span>
-        <span className="text-2xl font-bold text-white">{stats.currentStreak}</span>
+        <motion.span
+          animate={newBadges.length > 0 || stats.currentStreak > 0 ? { scale: [1, 1.18, 1] } : undefined}
+          transition={{ duration: 0.8, delay: 0.2, ease: 'easeInOut' }}
+          className="text-3xl"
+        >
+          🔥
+        </motion.span>
+        <motion.span
+          initial={{ scale: 0.86, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+          className="text-2xl font-bold text-white"
+        >
+          {stats.currentStreak}
+        </motion.span>
         <span className="text-sm text-white/60">day streak</span>
       </div>
 

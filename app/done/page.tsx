@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Brain } from 'lucide-react'
 import { StreakDisplay } from '@/components/StreakDisplay'
 import { FeelingCheck } from '@/components/FeelingCheck'
 import { EmailCapture } from '@/components/EmailCapture'
 import { getOrCreateAnonymousUser, getUserStats, getUserSessionCount } from '@/lib/user'
-import { UserStats, FeelingAfter } from '@/types'
+import { UserStats } from '@/types'
 
 interface SessionResult {
   sessionId: string
@@ -24,6 +24,7 @@ export default function DonePage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [showEmail, setShowEmail] = useState(false)
   const [feelingSubmitted, setFeelingSubmitted] = useState(false)
+  const [showStreakPopup, setShowStreakPopup] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -31,17 +32,15 @@ export default function DonePage() {
         const id = await getOrCreateAnonymousUser()
         setUserId(id)
 
-        // Read session result from cookie
+        // Read session result from sessionStorage
+        const storedResult = sessionStorage.getItem('defrag_result')
         let sessionResult: SessionResult | null = null
-        const stored = document.cookie
-          .split('; ')
-          .find((row) => row.startsWith('defrag_result='))
-        if (stored) {
-          sessionResult = JSON.parse(decodeURIComponent(stored.split('=')[1]))
+        if (storedResult) {
+          sessionResult = JSON.parse(storedResult)
           setResult(sessionResult)
-
-          // Clear one-time cookie
-          document.cookie = 'defrag_result=; path=/; max-age=0'
+          sessionStorage.removeItem('defrag_result')
+          sessionStorage.removeItem('defrag_protocol')
+          sessionStorage.removeItem('defrag_input')
         }
 
         // Get current stats
@@ -69,22 +68,56 @@ export default function DonePage() {
     init()
   }, [])
 
-  const handleFeelingSubmit = (_feeling: FeelingAfter) => {
+  const handleFeelingSubmit = () => {
     setFeelingSubmitted(true)
   }
 
-  const defaultStats: UserStats = {
-    totalPoints: 0,
-    currentStreak: 0,
-    longestStreak: 0,
-    lastDefragDate: null,
-    badges: [],
-    totalSessions: 0,
-    fatigueBreakdown: { LOGIC: 0, NARRATIVE: 0, VISUAL: 0, EMOTIONAL: 0 },
-  }
+  const visibleStreak = Math.max(result?.newStreak ?? stats?.currentStreak ?? 1, 1)
+
+  useEffect(() => {
+    if (!result) return
+
+    const showDelay = setTimeout(() => setShowStreakPopup(true), 700)
+    const hideDelay = setTimeout(() => setShowStreakPopup(false), 7600)
+
+    return () => {
+      clearTimeout(showDelay)
+      clearTimeout(hideDelay)
+    }
+  }, [result])
 
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
+      <AnimatePresence>
+        {showStreakPopup && result && (
+          <motion.div
+            initial={{ opacity: 0, y: -18, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+            className="fixed left-1/2 top-5 z-50 w-[calc(100%-32px)] max-w-sm -translate-x-1/2 rounded-lg border border-[#4CAF7D]/40 bg-[#101510]/95 p-4 text-center shadow-2xl shadow-black/40 backdrop-blur"
+          >
+            <motion.div
+              initial={{ scale: 0.8, rotate: -5 }}
+              animate={{ scale: [0.8, 1.12, 1], rotate: [-5, 4, 0] }}
+              transition={{ duration: 0.7, ease: 'easeOut' }}
+              className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-[#4CAF7D] text-2xl"
+            >
+              🔥
+            </motion.div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#4CAF7D]">
+              Journey continued
+            </p>
+            <h2 className="mt-1 text-lg font-bold text-white">
+              Day {visibleStreak} streak unlocked
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-white/65">
+              One more recovery rep logged. Keep building the kind of brain that comes back clear.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Completion Animation */}
       <motion.div
         initial={{ scale: 0.5, opacity: 0 }}
