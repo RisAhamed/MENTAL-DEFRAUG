@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Brain, Info, Loader2 } from 'lucide-react'
 import { ShortcutChips } from '@/components/ShortcutChips'
+import UserProfileChip from '@/components/UserProfileChip'
 import { getOrCreateAnonymousUser, getUserStats, getUserSessionCount } from '@/lib/user'
 import { DefragProtocol, UserStats } from '@/types'
 
@@ -13,12 +14,21 @@ export default function HomePage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [userId, setUserId] = useState<string | null>(null)
   const [stats, setStats] = useState<UserStats | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const id = localStorage.getItem('mental_defrag_user_id')
+      setUserId(id)
+    }
+  }, [])
 
   useEffect(() => {
     async function init() {
       try {
         const id = await getOrCreateAnonymousUser()
+        setUserId(id)
         const userStats = await getUserStats(id)
         const sessionCount = await getUserSessionCount(id)
         if (userStats) {
@@ -75,11 +85,13 @@ export default function HomePage() {
           <Brain className="h-5 w-5 text-[#4CAF7D]" />
           <span className="font-semibold text-white">Mental Defrag</span>
         </div>
-        {stats && stats.currentStreak > 0 && (
+        {userId ? (
+          <UserProfileChip userId={userId} />
+        ) : stats && stats.currentStreak > 0 ? (
           <div className="flex items-center gap-1 text-xs text-white/50">
             🔥 <span>{stats.currentStreak} day streak</span>
           </div>
-        )}
+        ) : null}
       </header>
 
       {/* Hero */}

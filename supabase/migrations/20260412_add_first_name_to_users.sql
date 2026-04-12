@@ -1,0 +1,2 @@
+ALTER TABLE public.users
+ADD COLUMN IF NOT EXISTS first_name TEXT;

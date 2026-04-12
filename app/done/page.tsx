@@ -7,6 +7,8 @@ import { Brain } from 'lucide-react'
 import { StreakDisplay } from '@/components/StreakDisplay'
 import { FeelingCheck } from '@/components/FeelingCheck'
 import { EmailCapture } from '@/components/EmailCapture'
+import InsightCard from '@/components/InsightCard'
+import BrainSummary from '@/components/BrainSummary'
 import { getOrCreateAnonymousUser, getUserStats, getUserSessionCount } from '@/lib/user'
 import { UserStats } from '@/types'
 
@@ -22,6 +24,11 @@ interface SessionResult {
   userEmail?: string | null
 }
 
+type BrainSummaryState = {
+  breakdown: Array<{ type: string; count: number }>
+  weekTotal: number
+}
+
 function DonePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -33,6 +40,11 @@ function DonePageContent() {
   const [showStreakPopup, setShowStreakPopup] = useState(false)
   const [showLinkedBanner, setShowLinkedBanner] = useState(false)
   const [displayPoints, setDisplayPoints] = useState(0)
+  const [insight, setInsight] = useState<string | null>(null)
+  const [brainSummary, setBrainSummary] = useState<BrainSummaryState | null>(null)
+  const [firstName, setFirstName] = useState('')
+  const [showNamePrompt, setShowNamePrompt] = useState(false)
+  const [savedName, setSavedName] = useState<string | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -57,6 +69,27 @@ function DonePageContent() {
           sessionStorage.removeItem('defrag_protocol')
           sessionStorage.removeItem('defrag_input')
         }
+
+        if (sessionResult) {
+          void fetch('/api/generate-insight', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: id, totalSessions: sessionResult.totalSessions }),
+          })
+            .then((response) => response.json())
+            .then((data) => setInsight(data.insight ?? null))
+            .catch(() => setInsight(null))
+        }
+
+        void fetch(`/api/brain-summary?userId=${encodeURIComponent(id)}`)
+          .then((response) => response.json())
+          .then((data) => {
+            setBrainSummary({
+              breakdown: data.breakdown ?? [],
+              weekTotal: data.weekTotal ?? 0,
+            })
+          })
+          .catch(() => setBrainSummary(null))
 
         // Get current stats
         const userStats = await getUserStats(id)
@@ -127,9 +160,33 @@ function DonePageContent() {
     if (searchParams.get('linked') !== 'true') return
 
     setShowLinkedBanner(true)
+    setShowNamePrompt(true)
     const hideDelay = setTimeout(() => setShowLinkedBanner(false), 4000)
     return () => clearTimeout(hideDelay)
   }, [searchParams])
+
+  async function handleSaveFirstName() {
+    const trimmedName = firstName.trim()
+    if (!userId || !trimmedName) {
+      setShowNamePrompt(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/update-user', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, firstName: trimmedName }),
+      })
+
+      if (!response.ok) throw new Error('Failed to save first name')
+
+      setSavedName(trimmedName)
+      setShowNamePrompt(false)
+    } catch {
+      setShowNamePrompt(false)
+    }
+  }
 
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
@@ -145,6 +202,48 @@ function DonePageContent() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {showNamePrompt && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="fixed left-1/2 top-20 z-50 w-[calc(100%-32px)] max-w-md -translate-x-1/2 rounded-lg border border-white/15 bg-[#101510]/95 p-3 shadow-2xl shadow-black/40"
+          >
+            <div className="flex gap-2">
+              <input
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                placeholder="What should we call you? (optional)"
+                className="min-h-[44px] flex-1 rounded-lg border border-white/15 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+              />
+              <button
+                onClick={handleSaveFirstName}
+                className="min-h-[44px] rounded-lg bg-white px-4 text-sm font-semibold text-black transition-colors hover:bg-white/90"
+              >
+                Save
+              </button>
+            </div>
+            <button
+              onClick={() => setShowNamePrompt(false)}
+              className="mt-2 text-xs text-white/35 transition-colors hover:text-white/60"
+            >
+              Skip
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {savedName && (
+        <motion.p
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed left-1/2 top-20 z-50 w-[calc(100%-32px)] max-w-md -translate-x-1/2 rounded-lg border border-[#4CAF7D]/30 bg-[#101510]/95 px-4 py-3 text-center text-sm text-white"
+        >
+          Hey {savedName}, your brain is in good hands 🧠
+        </motion.p>
+      )}
 
       <AnimatePresence>
         {showStreakPopup && result && (
@@ -195,13 +294,6 @@ function DonePageContent() {
         </p>
       </motion.div>
 
-      {/* Stats */}
-      {stats && (
-        <div className="mb-8">
-          <StreakDisplay stats={stats} newBadges={result?.newBadges ?? []} />
-        </div>
-      )}
-
       {/* Points earned */}
       {result && (
         <motion.div
@@ -214,6 +306,25 @@ function DonePageContent() {
             +{displayPoints} Brain Points
           </p>
         </motion.div>
+      )}
+
+      {/* Stats */}
+      {stats && (
+        <div className="mb-8">
+          <StreakDisplay stats={stats} newBadges={result?.newBadges ?? []} />
+        </div>
+      )}
+
+      {insight && (
+        <div className="mb-8 flex w-full justify-center">
+          <InsightCard insight={insight} />
+        </div>
+      )}
+
+      {brainSummary && brainSummary.breakdown.length > 0 && (
+        <div className="mb-8 flex w-full justify-center">
+          <BrainSummary breakdown={brainSummary.breakdown} weekTotal={brainSummary.weekTotal} />
+        </div>
       )}
 
       {/* Feeling Check */}
