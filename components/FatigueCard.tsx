@@ -3,8 +3,7 @@
 import { DefragProtocol, FatigueType, Intensity } from '@/types'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { AlertTriangle, ChevronDown, ChevronUp, Play } from 'lucide-react'
-import { useState } from 'react'
+import { Play } from 'lucide-react'
 
 const INTENSITY_COLORS: Record<Intensity, string> = {
   LIGHT: 'bg-green-500/20 text-green-300 border-green-500/30',
@@ -23,19 +22,26 @@ interface FatigueCardProps {
   protocol: DefragProtocol
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
 export function FatigueCard({ protocol }: FatigueCardProps) {
   const router = useRouter()
-  const [expandedStep, setExpandedStep] = useState<number | null>(null)
-
-  const bgColor = protocol.ambientColor + '1A' // ~10% opacity
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="w-full max-w-lg rounded-2xl border border-white/10 p-6"
-      style={{ backgroundColor: bgColor }}
+      className="w-full max-w-2xl mx-auto rounded-2xl p-5 md:p-6"
+      style={{
+        backgroundColor: hexToRgba(protocol.ambientColor, 0.08),
+        border: `1px solid ${hexToRgba(protocol.ambientColor, 0.25)}`,
+      }}
     >
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
@@ -48,45 +54,32 @@ export function FatigueCard({ protocol }: FatigueCardProps) {
       </div>
 
       {/* Instagram Warning */}
-      <div className="flex items-start gap-3 rounded-xl bg-red-500/10 border border-red-500/20 p-4 mb-6">
-        <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-red-200">{protocol.instagramWarning}</p>
+      <div className="rounded-xl bg-[rgba(220,38,38,0.12)] border border-[rgba(220,38,38,0.30)] p-4 mb-5">
+        <p className="text-sm text-[#F5F5F5]">⚠️ {protocol.instagramWarning}</p>
       </div>
 
       <div className="border-t border-white/10 mb-6" />
 
       {/* Steps */}
-      <div className="space-y-4">
+      <div>
         {protocol.steps.map((step, i) => (
-          <div key={i}>
-            <div
-              className="flex items-start gap-3 cursor-pointer"
-              onClick={() => setExpandedStep(expandedStep === i ? null : i)}
-            >
-              <span className="mt-0.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-mono text-white/70 whitespace-nowrap">
+          <div key={i} className={`relative flex gap-4 py-4 ${i !== protocol.steps.length - 1 ? 'border-b border-subtle' : ''}`}>
+            <div>
+              <span
+                className="mt-0.5 inline-block rounded-full px-2 py-1 text-xs font-mono text-white/80 whitespace-nowrap"
+                style={{ backgroundColor: hexToRgba(protocol.ambientColor, 0.2) }}
+              >
                 {step.duration}
               </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white/90">{step.action}</p>
-                <p className="text-xs text-white/50 mt-1">{step.why}</p>
-              </div>
-              {expandedStep === i ? (
-                <ChevronUp className="h-4 w-4 text-white/40 flex-shrink-0 mt-1" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-white/40 flex-shrink-0 mt-1" />
-              )}
             </div>
-            {expandedStep === i && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="ml-[72px] mt-2 rounded-lg bg-red-500/10 border border-red-500/15 p-3"
-              >
-                <p className="text-xs text-red-300">
-                  <span className="font-medium">Avoid:</span> {step.avoid}
-                </p>
-              </motion.div>
-            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-white">{step.action}</p>
+              <p className="mt-1 text-sm text-[#A0A0A0]">{step.why}</p>
+              <details className="mt-2 rounded-lg bg-[rgba(220,38,38,0.12)] border border-[rgba(220,38,38,0.30)] p-3">
+                <summary className="cursor-pointer text-xs font-medium text-[#FCA5A5]">What to avoid</summary>
+                <p className="mt-2 text-xs text-[#FCA5A5]">{step.avoid}</p>
+              </details>
+            </div>
           </div>
         ))}
       </div>
@@ -96,7 +89,8 @@ export function FatigueCard({ protocol }: FatigueCardProps) {
       {/* Start Button */}
       <button
         onClick={() => router.push('/timer')}
-        className="w-full flex items-center justify-center gap-2 rounded-xl bg-white text-black font-semibold py-3.5 text-sm hover:bg-white/90 transition-colors"
+        className="w-full min-h-[52px] mt-6 flex items-center justify-center gap-2 rounded-xl text-white font-semibold py-3.5 text-sm transition-colors"
+        style={{ backgroundColor: protocol.ambientColor }}
       >
         <Play className="h-4 w-4" />
         START MY 10-MIN DEFRAG

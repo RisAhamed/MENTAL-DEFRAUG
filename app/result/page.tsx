@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { DefragProtocol } from '@/types'
 import { FatigueCard } from '@/components/FatigueCard'
 
@@ -31,9 +32,15 @@ export default function ResultPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
-      <FatigueCard protocol={protocol} />
-      <p className="text-xs text-white/30 mt-4">Only 10 minutes. Your brain will thank you.</p>
+    <main className="min-h-screen max-w-full overflow-x-hidden bg-[#0F0F0F] px-4 py-6">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+      >
+        <FatigueCard protocol={protocol} />
+      </motion.div>
+      <p className="text-center text-xs text-white/30 mt-4">Only 10 minutes. Your brain will thank you.</p>
     </main>
   )
 }

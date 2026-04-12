@@ -52,6 +52,12 @@ export default {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        logic: '#4CAF7D',
+        narrative: '#3B6B9E',
+        visual: '#D4854A',
+        emotional: '#7B5EA7',
+        surface: '#1A1A1A',
+        'surface-2': '#242424',
       },
       borderRadius: {
         lg: "var(--radius)",

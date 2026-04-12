@@ -4,6 +4,19 @@
 
 @layer base {
   :root {
+    --color-bg: #0F0F0F;
+    --color-surface: #1A1A1A;
+    --color-surface-2: #242424;
+    --color-border: rgba(255,255,255,0.10);
+    --color-text: #F5F5F5;
+    --color-muted: #A0A0A0;
+    --color-accent: #4CAF7D;
+    --color-logic: #4CAF7D;
+    --color-narrative: #3B6B9E;
+    --color-visual: #D4854A;
+    --color-emotional: #7B5EA7;
+    --color-warning-bg: rgba(220, 38, 38, 0.12);
+    --color-warning-border: rgba(220, 38, 38, 0.30);
     --background: 0 0% 4%;
     --foreground: 0 0% 96%;
     --card: 0 0% 8%;
@@ -36,6 +49,10 @@
   body {
     @apply bg-[#0F0F0F] text-[#F5F5F5];
   }
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
 }
 
 .ambient-bg {
@@ -48,10 +65,19 @@
 }
 
 .fade-in {
-  animation: fadeIn 0.4s ease-in;
+  animation: fadeIn 0.4s ease forwards;
 }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.surface { background: var(--color-surface); }
+.surface-2 { background: var(--color-surface-2); }
+.text-muted { color: var(--color-muted); }
+.border-subtle { border-color: var(--color-border); }
+
+.ambient-transition {
+  transition: background-color 1s ease;
 }
