@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { classifyAndGenerateProtocol } from '@/lib/gemini'
 
+const AI_TIMEOUT_MS = 10000
+
 function timeout(ms: number) {
   return new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error('timeout')), ms)
   })
+}
+
+function getErrorStatusCode(error: unknown): number | undefined {
+  if (typeof error === 'object' && error !== null && 'status' in error) {
+    return Number((error as { status?: number }).status)
+  }
+  return undefined
 }
 
 export async function POST(request: NextRequest) {
@@ -20,15 +29,13 @@ export async function POST(request: NextRequest) {
 
     const protocol = await Promise.race([
       classifyAndGenerateProtocol(input.trim()),
-      timeout(10000),
+      timeout(AI_TIMEOUT_MS),
     ])
 
     return NextResponse.json(protocol)
   } catch (error) {
     console.error('Defrag API error:', error)
-    const statusCode = typeof error === 'object' && error !== null && 'status' in error
-      ? Number((error as { status?: number }).status)
-      : undefined
+    const statusCode = getErrorStatusCode(error)
     const message = error instanceof Error ? error.message.toLowerCase() : ''
 
     if (message.includes('timeout')) {

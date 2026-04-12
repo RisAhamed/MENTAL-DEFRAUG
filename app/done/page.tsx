@@ -30,6 +30,8 @@ type BrainSummaryState = {
   weekTotal: number
 }
 
+const BADGE_MAP = Object.fromEntries(Object.values(BADGES).map((badge) => [badge.id, badge]))
+
 function DonePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -132,7 +134,6 @@ function DonePageContent() {
 
   const visibleStreak = Math.max(result?.newStreak ?? stats?.currentStreak ?? 1, 1)
   const todaySessionDisplay = result?.todaySessionCount ?? result?.totalSessions ?? stats?.totalSessions ?? 1
-  const badgeMap = Object.fromEntries(Object.values(BADGES).map((badge) => [badge.id, badge]))
 
   useEffect(() => {
     if (!result) return
@@ -337,7 +338,7 @@ function DonePageContent() {
         <section className="w-full max-w-2xl mx-auto border-b border-subtle py-6">
           <div className="flex flex-wrap justify-center gap-3">
             {result.newBadges.map((badgeId, index) => {
-              const badge = badgeMap[badgeId]
+              const badge = BADGE_MAP[badgeId]
               if (!badge) return null
               return (
                 <motion.div

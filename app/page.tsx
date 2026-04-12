@@ -140,8 +140,8 @@ export default function HomePage() {
         {/* Error */}
         {error && (
           <div className="mt-4 rounded-xl border border-[rgba(220,38,38,0.30)] bg-[rgba(220,38,38,0.12)] p-4">
-            <p className="text-sm text-[#F5F5F5]">Couldn&apos;t analyse your session. Your internet might be slow.</p>
-            <p className="mt-1 text-xs text-[#FCA5A5]">{error}</p>
+            <p className="text-sm text-[#F5F5F5]">{error}</p>
+            <p className="mt-1 text-xs text-[#FCA5A5]">Couldn&apos;t analyse your session. Your internet might be slow.</p>
             <button
               type="button"
               onClick={handleSubmit}

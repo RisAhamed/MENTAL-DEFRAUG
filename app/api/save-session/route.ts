@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { calculatePoints, calculateStreak, checkNewBadges, updateUserStats } from '@/lib/points'
 
+const BASE_RETRY_DELAY_MS = 500
+
 async function insertWithRetry(
   supabase: ReturnType<typeof createAdminClient>,
   sessionData: {
@@ -25,7 +27,7 @@ async function insertWithRetry(
 
     if (!error) return { data, error: null }
     if (i === maxRetries) return { data: null, error }
-    await new Promise((resolve) => setTimeout(resolve, 500 * (i + 1)))
+    await new Promise((resolve) => setTimeout(resolve, BASE_RETRY_DELAY_MS * (i + 1)))
   }
   return { data: null, error: new Error('Insert retries exhausted') }
 }
@@ -40,12 +42,12 @@ async function updateStatsWithRetry(
   for (let i = 0; i <= maxRetries; i++) {
     try {
       const data = await updateUserStats(userId, pointsEarned, newStreak, newBadges)
-      return { data, error: null as Error | null }
+      return { data, error: null }
     } catch (error) {
       if (i === maxRetries) {
         return { data: null, error: error as Error }
       }
-      await new Promise((resolve) => setTimeout(resolve, 500 * (i + 1)))
+      await new Promise((resolve) => setTimeout(resolve, BASE_RETRY_DELAY_MS * (i + 1)))
     }
   }
   return { data: null, error: new Error('Update retries exhausted') }

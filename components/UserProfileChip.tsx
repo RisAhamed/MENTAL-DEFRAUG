@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BADGES } from '@/lib/badges'
 
 interface UserProfileChipProps {
@@ -16,16 +16,13 @@ type HeaderStats = {
   firstName?: string | null
 }
 
+const BADGE_MAP = Object.fromEntries(Object.values(BADGES).map((badge) => [badge.id, badge]))
+
 export default function UserProfileChip({ userId }: UserProfileChipProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [stats, setStats] = useState<HeaderStats | null>(null)
   const [loading, setLoading] = useState(true)
-
-  const badgeMap = useMemo(
-    () => Object.fromEntries(Object.values(BADGES).map((badge) => [badge.id, badge])),
-    []
-  )
 
   useEffect(() => {
     let cancelled = false
@@ -156,7 +153,7 @@ export default function UserProfileChip({ userId }: UserProfileChipProps) {
             {badges.length > 0 && (
               <div className="mt-3 flex items-center gap-2">
                 {badges.slice(0, 3).map((badgeId) => {
-                  const badge = badgeMap[badgeId]
+                  const badge = BADGE_MAP[badgeId]
                   if (!badge) return null
                   return (
                     <span

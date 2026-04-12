@@ -76,7 +76,9 @@ export function FatigueCard({ protocol }: FatigueCardProps) {
               <p className="text-sm font-bold text-white">{step.action}</p>
               <p className="mt-1 text-sm text-[#A0A0A0]">{step.why}</p>
               <details className="mt-2 rounded-lg bg-[rgba(220,38,38,0.12)] border border-[rgba(220,38,38,0.30)] p-3">
-                <summary className="cursor-pointer text-xs font-medium text-[#FCA5A5]">What to avoid</summary>
+                <summary className="cursor-pointer text-xs font-medium text-[#FCA5A5] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FCA5A5] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded">
+                  What to avoid
+                </summary>
                 <p className="mt-2 text-xs text-[#FCA5A5]">{step.avoid}</p>
               </details>
             </div>
