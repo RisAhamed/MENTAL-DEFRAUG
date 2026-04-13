@@ -13,12 +13,12 @@ const CHIPS = [
 
 export function ShortcutChips({ onSelect }: ShortcutChipsProps) {
   return (
-    <div className="flex flex-wrap gap-2 justify-center">
+    <div className="flex flex-wrap gap-2">
       {CHIPS.map((chip) => (
         <button
           key={chip.emoji}
           onClick={() => onSelect(chip.text)}
-          className="rounded-full border border-white/20 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+          className="min-h-[44px] rounded-full border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors"
         >
           {chip.emoji} {chip.text}
         </button>

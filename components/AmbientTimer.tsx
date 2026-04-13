@@ -16,25 +16,27 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
   const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS)
   const [isRunning] = useState(true)
   const [showComplete, setShowComplete] = useState(false)
-  const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   const completedRef = useRef(false)
 
   const currentStep = timeLeft > 420 ? 0 : timeLeft > 180 ? 1 : 2
   const minutes = Math.floor(timeLeft / 60)
   const seconds = timeLeft % 60
 
-  // Request Wake Lock to prevent screen sleep
   useEffect(() => {
-    async function requestWakeLock() {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLockRef.current = await navigator.wakeLock.request('screen')
-        }
-      } catch {}
+    let wakeLock: WakeLockSentinel | null = null
+
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen')
+        } catch {}
+      }
     }
+
     requestWakeLock()
+
     return () => {
-      wakeLockRef.current?.release()
+      wakeLock?.release()
     }
   }, [])
 
@@ -70,52 +72,75 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
     return () => clearTimeout(completeDelay)
   }, [timeLeft, onComplete])
 
-  const bgColor = protocol.ambientColor + 'D9' // ~85% opacity
+  const bgColor = `${protocol.ambientColor}D9`
+
+  function handleSkipClick() {
+    const confirmed = window.confirm("Skip the defrag? You'll still earn 5 points.")
+    if (confirmed) {
+      onSkip()
+    }
+  }
 
   return (
     <div
-      className="fixed inset-0 flex flex-col items-center justify-center ambient-bg"
-      style={{ backgroundColor: bgColor }}
+      className="fixed inset-0 overflow-hidden max-w-full flex flex-col items-center justify-center ambient-transition"
+      style={{ backgroundColor: bgColor, transitionDuration: '0.5s' }}
     >
       {/* Step progress dots */}
-      <div className="flex gap-3 mb-12">
+      <div className="flex gap-3 mb-10">
         {protocol.steps.map((_, i) => (
           <div
             key={i}
-            className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${
-              i <= currentStep ? 'bg-white scale-125' : 'bg-white/30'
+            className={`relative flex h-2 w-2 items-center justify-center rounded-full transition-all duration-300 ${
+              i < currentStep
+                ? 'bg-white'
+                : i === currentStep
+                  ? 'bg-white scale-[1.3]'
+                  : 'bg-white/30'
             }`}
-          />
+          >
+            {i < currentStep && <span className="text-[7px] leading-none text-black">✓</span>}
+          </div>
         ))}
       </div>
 
       {/* Countdown */}
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="text-center"
-      >
-        <p className="text-7xl font-mono font-bold text-white tracking-wider">
-          {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-        </p>
-      </motion.div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={timeLeft}
+          initial={{ opacity: 1, scale: 1 }}
+          animate={{ scale: [1, 1.04, 1] }}
+          transition={{ duration: 0.3 }}
+          className="text-center"
+        >
+          <p className="text-[clamp(3.5rem,16vw,5rem)] font-mono font-bold text-white tracking-widest">
+            {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+          </p>
+        </motion.div>
+      </AnimatePresence>
 
       {/* Current step card */}
-      <div className="mt-12 max-w-md w-full mx-4">
-        <div className="rounded-xl bg-black/30 backdrop-blur-sm p-5 border border-white/10">
-          <p className="text-xs text-white/60 mb-1">
-            Step {currentStep + 1} of 3 — {protocol.steps[currentStep].duration}
-          </p>
-          <p className="text-sm text-white font-medium">
-            {protocol.steps[currentStep].action}
-          </p>
-        </div>
+      <div className="mt-10 w-full px-4 flex justify-center">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.2 }}
+            className="w-full max-w-[280px] rounded-2xl bg-[rgba(0,0,0,0.25)] p-4"
+          >
+            <p className="text-center text-sm font-bold text-white">
+              {protocol.steps[currentStep].action}
+            </p>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Skip button */}
       <button
-        onClick={onSkip}
-        className="absolute bottom-8 right-8 text-xs text-white/30 hover:text-white/60 transition-colors"
+        onClick={handleSkipClick}
+        className="fixed bottom-6 right-6 text-xs text-white/40 hover:text-white/70 transition-colors"
       >
         skip
       </button>

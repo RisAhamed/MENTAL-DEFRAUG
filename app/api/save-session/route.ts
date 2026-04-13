@@ -2,6 +2,57 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { calculatePoints, calculateStreak, checkNewBadges, updateUserStats } from '@/lib/points'
 
+const BASE_RETRY_DELAY_MS = 500
+
+async function insertWithRetry(
+  supabase: ReturnType<typeof createAdminClient>,
+  sessionData: {
+    user_id: string
+    input_text: string
+    fatigue_type: string
+    intensity: string
+    protocol: unknown
+    timer_completed: boolean
+    feeling_after: null
+    points_earned: number
+  },
+  maxRetries = 2
+) {
+  for (let i = 0; i <= maxRetries; i++) {
+    const { data, error } = await supabase
+      .from('sessions')
+      .insert(sessionData)
+      .select('id')
+      .single()
+
+    if (!error) return { data, error: null }
+    if (i === maxRetries) return { data: null, error }
+    await new Promise((resolve) => setTimeout(resolve, BASE_RETRY_DELAY_MS * (i + 1)))
+  }
+  return { data: null, error: new Error('Insert retries exhausted') }
+}
+
+async function updateStatsWithRetry(
+  userId: string,
+  pointsEarned: number,
+  newStreak: number,
+  newBadges: string[],
+  maxRetries = 2
+) {
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      const data = await updateUserStats(userId, pointsEarned, newStreak, newBadges)
+      return { data, error: null }
+    } catch (error) {
+      if (i === maxRetries) {
+        return { data: null, error: error as Error }
+      }
+      await new Promise((resolve) => setTimeout(resolve, BASE_RETRY_DELAY_MS * (i + 1)))
+    }
+  }
+  return { data: null, error: new Error('Update retries exhausted') }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { userId, inputText, fatigueType, intensity, protocol, timerCompleted } = await request.json()
@@ -50,26 +101,53 @@ export async function POST(request: NextRequest) {
     const newStreak = calculateStreak(lastDefragDate, currentStreak)
     const newBadges = checkNewBadges(currentBadges, newStreak, totalSessions)
 
-    // Insert session
-    const { data: session, error: insertError } = await supabase
-      .from('sessions')
-      .insert({
-        user_id: userId,
-        input_text: inputText,
-        fatigue_type: fatigueType,
-        intensity,
-        protocol,
-        timer_completed: timerCompleted,
-        feeling_after: null,
-        points_earned: pointsEarned,
-      })
-      .select('id')
-      .single()
+    const sessionData = {
+      user_id: userId,
+      input_text: inputText,
+      fatigue_type: fatigueType,
+      intensity,
+      protocol,
+      timer_completed: timerCompleted,
+      feeling_after: null,
+      points_earned: pointsEarned,
+    }
 
-    if (insertError) throw insertError
+    const { data: session, error: insertError } = await insertWithRetry(supabase, sessionData)
+    if (insertError || !session) {
+      console.error('Save session insert failed after retries:', insertError)
+      return NextResponse.json(
+        {
+          sessionId: null,
+          pointsEarned: 5,
+          newStreak: 0,
+          newBadges: [],
+          error: 'session_save_failed',
+        },
+        { status: 207 }
+      )
+    }
 
     // Update user stats
-    const updatedStats = await updateUserStats(userId, pointsEarned, newStreak, newBadges)
+    const { data: updatedStats, error: updateError } = await updateStatsWithRetry(
+      userId,
+      pointsEarned,
+      newStreak,
+      newBadges
+    )
+    if (updateError) {
+      console.error('Save session stats update failed after retries:', updateError)
+      return NextResponse.json(
+        {
+          sessionId: null,
+          pointsEarned: 5,
+          newStreak: 0,
+          newBadges: [],
+          error: 'session_save_failed',
+        },
+        { status: 207 }
+      )
+    }
+
     const longestStreak = updatedStats?.longestStreak ?? Math.max(userData?.longest_streak ?? 0, newStreak)
     const totalPoints = updatedStats?.totalPoints ?? (userData?.total_points ?? 0) + pointsEarned
 

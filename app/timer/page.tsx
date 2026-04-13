@@ -53,19 +53,20 @@ export default function TimerPage() {
       })
 
       const data = await res.json()
-
-      if (!res.ok) throw new Error(data?.error || 'Failed to save session')
+      const isPartialSave = res.status === 207
+      if (!res.ok && !isPartialSave) throw new Error(data?.error || 'Failed to save session')
 
       const sessionResult = {
-        sessionId: data.sessionId,
-        pointsEarned: data.pointsEarned,
-        newStreak: data.newStreak,
-        longestStreak: data.longestStreak,
-        newBadges: data.newBadges,
-        totalPoints: data.totalPoints,
-        totalSessions: data.totalSessions,
-        todaySessionCount: data.todaySessionCount,
-        userEmail: data.userEmail,
+        sessionId: data.sessionId ?? null,
+        pointsEarned: data.pointsEarned ?? 5,
+        newStreak: data.newStreak ?? 0,
+        longestStreak: data.longestStreak ?? 0,
+        newBadges: data.newBadges ?? [],
+        totalPoints: data.totalPoints ?? 0,
+        totalSessions: data.totalSessions ?? 0,
+        todaySessionCount: data.todaySessionCount ?? 0,
+        userEmail: data.userEmail ?? null,
+        saveFailed: data.error === 'session_save_failed' || isPartialSave,
       }
 
       const serializedResult = encodeURIComponent(JSON.stringify(sessionResult))

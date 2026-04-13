@@ -2,18 +2,18 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { AnimatePresence, animate, motion } from 'framer-motion'
-import { Brain } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { StreakDisplay } from '@/components/StreakDisplay'
 import { FeelingCheck } from '@/components/FeelingCheck'
 import { EmailCapture } from '@/components/EmailCapture'
 import InsightCard from '@/components/InsightCard'
 import BrainSummary from '@/components/BrainSummary'
 import { getOrCreateAnonymousUser, getUserStats, getUserSessionCount } from '@/lib/user'
+import { BADGES } from '@/lib/badges'
 import { UserStats } from '@/types'
 
 interface SessionResult {
-  sessionId: string
+  sessionId: string | null
   pointsEarned: number
   newStreak: number
   longestStreak: number
@@ -22,12 +22,15 @@ interface SessionResult {
   totalSessions: number
   todaySessionCount?: number
   userEmail?: string | null
+  saveFailed?: boolean
 }
 
 type BrainSummaryState = {
   breakdown: Array<{ type: string; count: number }>
   weekTotal: number
 }
+
+const BADGE_MAP = Object.fromEntries(Object.values(BADGES).map((badge) => [badge.id, badge]))
 
 function DonePageContent() {
   const router = useRouter()
@@ -145,16 +148,37 @@ function DonePageContent() {
   }, [result])
 
   useEffect(() => {
-    if (!result) return
+    if (!result || result.pointsEarned <= 0) return
 
-    const controls = animate(0, result.pointsEarned, {
-      duration: 0.9,
-      ease: 'easeOut',
-      onUpdate: (latest) => setDisplayPoints(Math.round(latest)),
-    })
+    const duration = 800
+    const steps = 20
+    const increment = result.pointsEarned / steps
+    const interval = duration / steps
+    let current = 0
+    const timer = setInterval(() => {
+      current += increment
+      if (current >= result.pointsEarned) {
+        setDisplayPoints(result.pointsEarned)
+        clearInterval(timer)
+      } else {
+        setDisplayPoints(Math.floor(current))
+      }
+    }, interval)
 
-    return () => controls.stop()
+    return () => clearInterval(timer)
   }, [result])
+
+  useEffect(() => {
+    function handleOpenEmailCapture() {
+      setShowEmail(true)
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+    }
+
+    window.addEventListener('open-email-capture', handleOpenEmailCapture as EventListener)
+    return () => {
+      window.removeEventListener('open-email-capture', handleOpenEmailCapture as EventListener)
+    }
+  }, [])
 
   useEffect(() => {
     if (searchParams.get('linked') !== 'true') return
@@ -189,7 +213,7 @@ function DonePageContent() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center px-4 py-12">
+    <main className="min-h-screen max-w-full overflow-x-hidden bg-[#0F0F0F] px-4 py-8 flex flex-col gap-6">
       <AnimatePresence>
         {showLinkedBanner && (
           <motion.div
@@ -246,7 +270,7 @@ function DonePageContent() {
       )}
 
       <AnimatePresence>
-        {showStreakPopup && result && (
+        {showStreakPopup && result && !result.saveFailed && (
           <motion.div
             initial={{ opacity: 0, y: -18, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -276,88 +300,106 @@ function DonePageContent() {
       </AnimatePresence>
 
       {/* Completion Animation */}
-      <motion.div
+      <motion.section
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-        className="flex flex-col items-center mb-8"
+        className="w-full max-w-2xl mx-auto flex flex-col items-center border-b border-subtle pb-6"
       >
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <Brain className="h-16 w-16 text-[#4CAF7D]" />
-        </motion.div>
-        <h1 className="text-2xl font-bold text-white mt-4">Defrag Complete</h1>
-        <p className="text-sm text-white/40 mt-1">
+        <div className="text-6xl">🧠</div>
+        <h1 className="text-2xl font-bold text-[#F5F5F5] mt-4">Defrag Complete</h1>
+        <p className="text-sm text-[#A0A0A0] mt-1">
           Session {todaySessionDisplay} today
         </p>
-      </motion.div>
+      </motion.section>
 
       {/* Points earned */}
       {result && (
-        <motion.div
+        <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="mb-8"
+          className="w-full max-w-2xl mx-auto border-b border-subtle py-6 text-center"
         >
-          <p className="text-lg text-white font-semibold">
+          <p className="text-lg text-[#4CAF7D] font-semibold">
             +{displayPoints} Brain Points
           </p>
-        </motion.div>
+        </motion.section>
       )}
 
       {/* Stats */}
-      {stats && (
-        <div className="mb-8">
+      {stats && !result?.saveFailed && (
+        <section className="w-full max-w-2xl mx-auto border-b border-subtle py-6">
           <StreakDisplay stats={stats} newBadges={result?.newBadges ?? []} />
-        </div>
+        </section>
+      )}
+
+      {!!(result?.newBadges?.length && !result?.saveFailed) && (
+        <section className="w-full max-w-2xl mx-auto border-b border-subtle py-6">
+          <div className="flex flex-wrap justify-center gap-3">
+            {result.newBadges.map((badgeId, index) => {
+              const badge = BADGE_MAP[badgeId]
+              if (!badge) return null
+              return (
+                <motion.div
+                  key={badgeId}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: index * 0.1, type: 'spring', stiffness: 300 }}
+                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white"
+                >
+                  {badge.emoji} {badge.label}
+                </motion.div>
+              )
+            })}
+          </div>
+        </section>
       )}
 
       {insight && (
-        <div className="mb-8 flex w-full justify-center">
+        <section className="w-full max-w-2xl mx-auto border-b border-subtle py-6 flex justify-center">
           <InsightCard insight={insight} />
-        </div>
+        </section>
       )}
 
       {brainSummary && brainSummary.breakdown.length > 0 && (
-        <div className="mb-8 flex w-full justify-center">
+        <section className="w-full max-w-2xl mx-auto border-b border-subtle py-6 flex justify-center">
           <BrainSummary breakdown={brainSummary.breakdown} weekTotal={brainSummary.weekTotal} />
-        </div>
+        </section>
       )}
 
       {/* Feeling Check */}
-      {result && !feelingSubmitted && (
-        <div className="mb-8">
+      {result && result.sessionId && !feelingSubmitted && (
+        <section className="w-full max-w-2xl mx-auto border-b border-subtle py-6">
+          <h2 className="mb-3 text-center text-base font-medium text-white">How do you feel right now?</h2>
           <FeelingCheck
             sessionId={result.sessionId}
             onSubmit={handleFeelingSubmit}
           />
-        </div>
+        </section>
       )}
 
       {/* Email Capture */}
       {showEmail && userId && (
-        <div className="mb-8">
+        <section className="w-full max-w-2xl mx-auto border-b border-subtle py-6">
           <EmailCapture
             userId={userId}
             onSuccess={handleEmailSuccess}
             onDismiss={() => setShowEmail(false)}
           />
-        </div>
+        </section>
       )}
 
       {/* Bottom Actions */}
-      <div className="flex flex-col items-center gap-3 mt-8">
+      <section className="w-full max-w-2xl mx-auto py-6 flex flex-col items-center gap-3">
         <button
           onClick={() => router.push('/')}
-          className="rounded-xl bg-[#4CAF7D] text-white font-semibold py-3 px-8 text-sm hover:bg-[#4CAF7D]/90 transition-colors min-h-[44px]"
+          className="w-full min-h-[52px] rounded-xl bg-[#4CAF7D] text-white font-semibold py-3 px-8 text-sm hover:bg-[#4CAF7D]/90 transition-colors"
         >
           Start Another Defrag
         </button>
         <p className="text-xs text-white/30">Come back after your next heavy session</p>
-      </div>
+      </section>
     </main>
   )
 }
