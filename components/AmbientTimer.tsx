@@ -2,12 +2,44 @@
 
 import { DefragProtocol } from '@/types'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 
 interface AmbientTimerProps {
   protocol: DefragProtocol
   onComplete: () => void
   onSkip: () => void
+}
+
+function Particle({ index }: { index: number }) {
+  const props = useMemo(() => ({
+    x: Math.random() * 100,
+    size: Math.random() * 4 + 2,
+    duration: Math.random() * 8 + 6,
+    delay: Math.random() * 5,
+  }), [])
+
+  return (
+    <motion.div
+      className="absolute rounded-full pointer-events-none"
+      style={{
+        left: `${props.x}%`,
+        bottom: '-10px',
+        width: props.size,
+        height: props.size,
+        backgroundColor: 'rgba(255,255,255,0.20)',
+      }}
+      animate={{
+        y: [0, -900],
+        opacity: [0, 0.35, 0.35, 0],
+      }}
+      transition={{
+        duration: props.duration,
+        delay: props.delay,
+        repeat: Infinity,
+        ease: 'linear',
+      }}
+    />
+  )
 }
 
 export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps) {
@@ -19,7 +51,9 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
   const [isRunning] = useState(true)
   const [showComplete, setShowComplete] = useState(false)
   const [showContextMessage, setShowContextMessage] = useState(false)
+  const [ripple, setRipple] = useState(false)
   const completedRef = useRef(false)
+  const prevStepRef = useRef(-1)
 
   const currentStep = timeLeft > step1End ? 0 : timeLeft > step2End ? 1 : 2
   const minutes = Math.floor(timeLeft / 60)
@@ -42,7 +76,7 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
 
     requestWakeLock()
 
-    const msgDelay = setTimeout(() => setShowContextMessage(true), 1000)
+    const msgDelay = setTimeout(() => setShowContextMessage(true), 2000)
 
     return () => {
       wakeLock?.release()
@@ -75,10 +109,19 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
 
     const completeDelay = setTimeout(() => {
       onComplete()
-    }, 800)
+    }, 1200)
 
     return () => clearTimeout(completeDelay)
   }, [timeLeft, onComplete])
+
+  useEffect(() => {
+    if (prevStepRef.current !== -1 && prevStepRef.current !== currentStep) {
+      setRipple(true)
+      const t = setTimeout(() => setRipple(false), 600)
+      return () => clearTimeout(t)
+    }
+    prevStepRef.current = currentStep
+  }, [currentStep])
 
   const bgColor = `${protocol.ambientColor}D9`
 
@@ -91,6 +134,9 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
       onSkip()
     }
   }
+
+  const formattedMinutes = String(minutes).padStart(2, '0')
+  const formattedSeconds = String(seconds).padStart(2, '0')
 
   return (
     <div
@@ -105,26 +151,13 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
         style={{ backgroundColor: protocol.ambientColor }}
       />
 
-      {/* Circular progress arc */}
-      <svg width="280" height="280" className="absolute">
-        <circle cx="140" cy="140" r="120" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
-        <circle
-          cx="140"
-          cy="140"
-          r="120"
-          fill="none"
-          stroke="rgba(255,255,255,0.70)"
-          strokeWidth="3"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          strokeLinecap="round"
-          transform="rotate(-90 140 140)"
-          style={{ transition: 'stroke-dashoffset 1s linear' }}
-        />
-      </svg>
+      {/* Floating particles */}
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Particle key={i} index={i} />
+      ))}
 
       {/* Step progress dots */}
-      <div className="flex gap-3 mb-10">
+      <div className="flex gap-3 mb-8">
         {protocol.steps.map((_, i) => (
           <div
             key={i}
@@ -141,50 +174,126 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
         ))}
       </div>
 
-      {/* Countdown */}
-      <div className="text-center">
+      {/* SVG Arc + Countdown container */}
+      <div className="relative flex items-center justify-center" style={{ width: 280, height: 280 }}>
+        {/* SVG arc - purely decorative, behind everything */}
+        <svg
+          width="280"
+          height="280"
+          className="absolute inset-0"
+          style={{ transform: 'rotate(-90deg)' }}
+        >
+          {/* Track - very subtle */}
+          <circle
+            cx="140"
+            cy="140"
+            r="120"
+            fill="none"
+            stroke="rgba(255,255,255,0.10)"
+            strokeWidth="2"
+          />
+          {/* Progress arc */}
+          <circle
+            cx="140"
+            cy="140"
+            r="120"
+            fill="none"
+            stroke="rgba(255,255,255,0.35)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+            style={{ transition: 'stroke-dashoffset 1s linear' }}
+          />
+        </svg>
+
+        {/* Countdown text - centered inside, above SVG */}
         {showComplete ? (
-          <motion.p
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 300 }}
-            className="text-[clamp(3.5rem,16vw,5rem)] font-mono font-bold text-white tracking-widest"
+          <motion.div
+            className="relative z-10 text-center"
+            initial={{ scale: 1 }}
+            animate={{ scale: [1, 0.8, 1.3, 1] }}
+            transition={{ duration: 0.5 }}
           >
-            ✓ Done
-          </motion.p>
+            <div style={{ fontSize: 72, color: '#FFFFFF', textShadow: '0 2px 20px rgba(0,0,0,0.3)' }}>✓</div>
+            <motion.p
+              className="text-white font-medium mt-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              Rest complete
+            </motion.p>
+          </motion.div>
         ) : (
-          <p className="text-[clamp(3.5rem,16vw,5rem)] font-mono font-bold text-white tracking-widest">
-            {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-          </p>
+          <div className="relative z-10 text-center">
+            <span
+              className="font-black tracking-widest"
+              style={{
+                fontSize: 'clamp(56px, 12vw, 80px)',
+                color: '#FFFFFF',
+                textShadow: '0 2px 20px rgba(0,0,0,0.3)',
+                lineHeight: 1
+              }}
+            >
+              {formattedMinutes}:{formattedSeconds}
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Current step card with step-aware color shift */}
-      <div className="mt-10 w-full px-4 flex justify-center">
+      {/* Step transition ripple */}
+      <AnimatePresence>
+        {ripple && (
+          <motion.div
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              top: '50%',
+              left: '50%',
+              x: '-50%',
+              y: '-50%',
+              border: '1px solid rgba(255,255,255,0.4)',
+            }}
+            initial={{ width: 0, height: 0, opacity: 0.8 }}
+            animate={{ width: 300, height: 300, opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Current step card with glass effect */}
+      <div className="mt-8 w-full px-4 flex justify-center">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
-            initial={{ opacity: 0, x: 24, backgroundColor: `${protocol.ambientColor}66` }}
-            animate={{ opacity: 1, x: 0, backgroundColor: `${protocol.ambientColor}40` }}
+            initial={{ opacity: 0, x: 24, backgroundColor: 'rgba(0,0,0,0.20)' }}
+            animate={{ opacity: 1, x: 0, backgroundColor: 'rgba(0,0,0,0.20)' }}
             exit={{ opacity: 0, x: -24 }}
             transition={{ duration: 0.2 }}
-            className="w-full max-w-[280px] rounded-2xl bg-[rgba(0,0,0,0.25)] p-4"
+            className="w-full max-w-[300px] md:max-w-[360px] rounded-2xl border border-white/12 bg-black/20 p-4 backdrop-blur-sm"
+            style={{
+              textShadow: '0 1px 4px rgba(0,0,0,0.2)',
+            }}
           >
-            <p className="text-center text-sm font-bold text-white">
+            <p className="text-center text-xs text-white/50 uppercase tracking-widest mb-1">
+              Step {currentStep + 1} of 3
+            </p>
+            <p className="text-center text-base font-medium text-white/95 text-center leading-relaxed">
               {protocol.steps[currentStep].action}
             </p>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Context Message at bottom */}
+      {/* Context Message at bottom - fixed, above skip */}
       <AnimatePresence>
         {showContextMessage && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.8 }}
-            className="fixed bottom-16 mx-auto max-w-[260px] text-center text-xs text-white/50"
+            transition={{ delay: 2, duration: 1 }}
+            className="fixed bottom-[80px] left-0 right-0 mx-auto max-w-[280px] text-center text-xs text-white/65"
           >
             {protocol.contextMessage}
           </motion.p>
@@ -199,41 +308,16 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
         skip
       </button>
 
-      {/* Completion overlay */}
+      {/* Completion background flash */}
       <AnimatePresence>
         {showComplete && (
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.3 }}
+            animate={{ opacity: 0.4 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-            className="absolute inset-0 bg-white"
-          >
-            <motion.div
-              initial={{ scale: 0.86, y: 18, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-              className="w-full max-w-sm rounded-lg border border-white/20 bg-black/50 p-6 text-center shadow-2xl"
-            >
-              <motion.div
-                animate={{ scale: [1, 1.14, 1] }}
-                transition={{ duration: 0.8, repeat: 1, ease: 'easeInOut' }}
-                className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-3xl"
-              >
-                🧠
-              </motion.div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/50">
-                Defrag complete
-              </p>
-              <h2 className="mt-2 text-2xl font-bold text-white">
-                Your brain got its reset.
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-white/70">
-                You stayed with the recovery instead of switching screens. That is the rep.
-              </p>
-            </motion.div>
-          </motion.div>
+            transition={{ duration: 0.5 }}
+            className="absolute inset-0 bg-white pointer-events-none"
+          />
         )}
       </AnimatePresence>
     </div>
