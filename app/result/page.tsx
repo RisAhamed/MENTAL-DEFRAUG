@@ -38,9 +38,16 @@ export default function ResultPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
       >
+        <div className="mb-6">
+          <button 
+            onClick={() => router.back()} 
+            className="text-[#606060] text-sm hover:text-white flex items-center gap-1"
+          >
+            ← Back
+          </button>
+        </div>
         <FatigueCard protocol={protocol} />
       </motion.div>
-      <p className="text-center text-xs text-white/30 mt-4">Only 10 minutes. Your brain will thank you.</p>
     </main>
   )
 }

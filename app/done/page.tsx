@@ -303,31 +303,39 @@ function DonePageContent() {
         )}
       </AnimatePresence>
 
-      {/* Completion Animation */}
+      {/* Completion Animation with gradient card */}
       <motion.section
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-        className="w-full max-w-2xl mx-auto flex flex-col items-center border-b border-subtle pb-6"
+        className="w-full max-w-2xl mx-auto flex flex-col items-center pb-6"
+        style={{
+          background: `linear-gradient(to bottom, rgba(76, 175, 125, 0.06), transparent)`,
+          borderRadius: '1rem',
+          padding: '1.5rem',
+          border: '1px solid rgba(76, 175, 125, 0.2)'
+        }}
       >
         <div className="text-6xl">🧠</div>
-        <h1 className="text-2xl font-bold text-[#F5F5F5] mt-4">Defrag Complete</h1>
+        <h1 className="text-xl font-semibold text-[#F5F5F5] mt-4">Recovery Complete</h1>
         <p className="text-sm text-[#A0A0A0] mt-1">
-          Session {todaySessionDisplay} today
+          Your brain gets {result?.pointsEarned ? Math.ceil(result.pointsEarned / 10) : 10} minutes back.
         </p>
       </motion.section>
 
-      {/* Points earned */}
+      {/* Points earned with gold pill */}
       {result && (
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="w-full max-w-2xl mx-auto border-b border-subtle py-6 text-center"
+          className="w-full max-w-2xl mx-auto py-6 text-center"
         >
-          <p className="text-lg text-[#4CAF7D] font-semibold">
-            +{displayPoints} Brain Points
-          </p>
+          <div className="inline-flex items-center gap-2 rounded-full bg-[rgba(255,215,0,0.08)] border border-[rgba(255,215,0,0.20)] px-4 py-2">
+            <span>⚡</span>
+            <span className="text-lg font-medium text-white">{displayPoints}</span>
+            <span className="text-xs text-white/50">brain points earned</span>
+          </div>
         </motion.section>
       )}
 
@@ -338,24 +346,51 @@ function DonePageContent() {
         </section>
       )}
 
+      {/* Streak Card */}
+      {visibleStreak >= 1 && (
+        <section className="w-full max-w-2xl mx-auto py-4">
+          <div className="rounded-xl bg-[rgba(255,100,0,0.08)] border border-[rgba(255,100,0,0.20)] p-4 flex items-center justify-between">
+            <div>
+              <p className="text-2xl font-bold text-white">🔥 {visibleStreak}</p>
+              <p className="text-xs text-[#A0A0A0]">day streak</p>
+            </div>
+            {visibleStreak === 1 && (
+              <p className="text-xs text-[#808080] max-w-[160px] text-right">
+                Come back tomorrow to keep it going
+              </p>
+            )}
+            {visibleStreak > 1 && (
+              <p className="text-xs text-[#4CAF7D] max-w-[160px] text-right">
+                You're on a roll. Don't break it.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+
       {!!(result?.newBadges?.length && !result?.saveFailed) && (
         <section className="w-full max-w-2xl mx-auto border-b border-subtle py-6">
-          <div className="flex flex-wrap justify-center gap-3">
-            {result.newBadges.map((badgeId, index) => {
-              const badge = BADGE_MAP[badgeId]
-              if (!badge) return null
-              return (
-                <motion.div
-                  key={badgeId}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: index * 0.1, type: 'spring', stiffness: 300 }}
-                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white"
-                >
-                  {badge.emoji} {badge.label}
-                </motion.div>
-              )
-            })}
+          <p className="text-xs uppercase tracking-wider text-[#505050] mb-3">
+            New Achievement{result.newBadges.length > 1 ? 's' : ''}
+          </p>
+          <div className="rounded-xl bg-[#1A1A1A] border border-[rgba(255,255,255,0.08)] p-4">
+            <div className="flex gap-3 flex-wrap">
+              {result.newBadges.map((badgeId, index) => {
+                const badge = BADGE_MAP[badgeId]
+                if (!badge) return null
+                return (
+                  <motion.div
+                    key={badgeId}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: index * 0.1, type: 'spring', stiffness: 300 }}
+                    className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white"
+                  >
+                    {badge.emoji} {badge.label}
+                  </motion.div>
+                )
+              })}
+            </div>
           </div>
         </section>
       )}
@@ -398,9 +433,9 @@ function DonePageContent() {
       <section className="w-full max-w-2xl mx-auto py-6 flex flex-col items-center gap-3">
         <button
           onClick={() => router.push('/')}
-          className="w-full min-h-[52px] rounded-xl bg-[#4CAF7D] text-white font-semibold py-3 px-8 text-sm hover:bg-[#4CAF7D]/90 transition-colors"
+          className="group w-full min-h-[52px] rounded-xl bg-[#4CAF7D] text-white font-semibold py-3 px-8 text-sm hover:bg-[#4CAF7D]/90 transition-colors"
         >
-          Start Another Defrag
+          Start Another Session →
         </button>
         <button
           onClick={() => setShowShareCard(true)}
@@ -408,7 +443,12 @@ function DonePageContent() {
         >
           Share Your Streak 🔗
         </button>
-        <p className="text-xs text-white/30">Come back after your next heavy session</p>
+        <div className="flex flex-col items-center gap-1 mt-3">
+          <p className="text-xs text-[#404040]">↑ Your streak updates in real time</p>
+          <p className="text-xs text-[#404040]">
+            {stats?.totalSessions ? '→ Progress saved to your account' : '→ Save your email to protect your streak'}
+          </p>
+        </div>
       </section>
 
       {/* Share Card Sheet */}

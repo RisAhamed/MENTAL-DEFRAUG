@@ -144,9 +144,14 @@ export default function HomePage() {
     <main className="min-h-screen max-w-full overflow-x-hidden bg-[#0F0F0F] px-4 md:px-6 flex flex-col">
       {/* Header */}
       <header className="w-full py-4 border-b border-subtle flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Brain className="h-5 w-5 text-[#4CAF7D]" />
-          <span className="font-semibold text-white">Mental Defrag</span>
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-[#4CAF7D]" />
+            <span className="font-semibold text-white">Mental Defrag</span>
+          </div>
+          <span className="text-[10px] text-[#404040] tracking-widest uppercase">
+            cognitive recovery
+          </span>
         </div>
         <div className="flex items-center gap-2">
           {stats && stats.totalSessions > 0 && (
@@ -176,15 +181,18 @@ export default function HomePage() {
           transition={{ duration: 0.5 }}
           className="text-center"
         >
-          <h1 className="text-3xl md:text-4xl font-bold text-[#F5F5F5] mb-3">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#F5F5F5] mb-3 leading-tight bg-gradient-to-r from-[#F5F5F5] to-[#A0A0A0] bg-clip-text text-transparent">
             What just fried your brain?
           </h1>
-          <p className="text-base md:text-lg text-[#A0A0A0] mt-2 mb-8">
-            Tell us what you were doing. We&apos;ll tell you exactly how to recover.
+          <p className="text-base text-[#707070] max-w-md mx-auto text-center mb-8">
+            Describe your last session in plain words. We classify your fatigue type and give you a specific 10-minute recovery protocol.
           </p>
         </motion.div>
 
         {/* Input */}
+        <p className="text-xs text-[#606060] mb-2 uppercase tracking-wider">
+          What were you doing?
+        </p>
         <textarea
           value={input}
           onChange={(e) => {
@@ -195,6 +203,11 @@ export default function HomePage() {
           placeholder="e.g. I just spent 2 hours debugging a Python script and I can't think straight anymore"
           className="w-full min-h-[120px] rounded-xl border border-[rgba(255,255,255,0.10)] bg-[#1A1A1A] p-4 text-base text-[#F5F5F5] placeholder:text-[#606060] focus:outline-none focus:border-[#4CAF7D] focus:ring-1 focus:ring-[#4CAF7D] resize-none"
         />
+        {input.length > 0 && input.length < 10 && (
+          <p className="text-xs text-[#606060] mt-1">
+            Keep going — a few more words helps us get it right
+          </p>
+        )}
 
         {/* Shortcut Chips */}
         <div className="w-full flex flex-wrap gap-2 mt-3">
@@ -226,7 +239,7 @@ export default function HomePage() {
         <button
           onClick={handleSubmit}
           disabled={loading || input.trim().length < 10}
-          className="w-full mt-4 min-h-[52px] rounded-xl bg-[#4CAF7D] text-white font-semibold text-base hover:bg-[#4CAF7D]/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="group w-full mt-4 min-h-[52px] rounded-xl bg-[#4CAF7D] text-white font-semibold text-base hover:bg-[#4CAF7D]/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 tracking-wide"
         >
           {loading ? (
             <>
@@ -235,7 +248,7 @@ export default function HomePage() {
             </>
           ) : (
             <>
-              DEFRAG MY BRAIN →
+              Analyse My Session <span className="transition-transform group-hover:translate-x-1">→</span>
             </>
           )}
         </button>
