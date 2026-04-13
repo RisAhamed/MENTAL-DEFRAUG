@@ -278,13 +278,12 @@ export default function HomePage() {
       <AnimatePresence>
         {showEmailModal && (
           <>
-            <motion.button
-              type="button"
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 bg-black/70"
-              aria-label="Close email capture modal"
+              role="presentation"
               onClick={() => {
                 setShowEmailModal(false)
                 setEmailError('')
@@ -294,6 +293,9 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 16, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="email-capture-title"
               className="fixed left-1/2 top-1/2 z-[60] w-[calc(100%-32px)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/12 bg-[#1A1A1A] p-5 shadow-2xl shadow-black/60"
             >
               <button
@@ -308,7 +310,7 @@ export default function HomePage() {
                 ✕
               </button>
 
-              <h2 className="pr-8 text-lg font-semibold text-white">Save your streak across all devices</h2>
+              <h2 id="email-capture-title" className="pr-8 text-lg font-semibold text-white">Save your streak across all devices</h2>
               <p className="mt-1 text-sm text-white/60">We&apos;ll also send you a weekly brain performance summary.</p>
 
               <div className="mt-4 grid grid-cols-2 gap-2">

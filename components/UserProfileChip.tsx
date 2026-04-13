@@ -177,6 +177,7 @@ export default function UserProfileChip({ userId }: UserProfileChipProps) {
             {totalSessions > 0 && (
               <button
                 type="button"
+                aria-label="View dashboard"
                 onClick={() => {
                   router.push('/dashboard')
                   setIsOpen(false)
