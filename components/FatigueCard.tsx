@@ -53,9 +53,10 @@ export function FatigueCard({ protocol }: FatigueCardProps) {
         </span>
       </div>
 
-      {/* Instagram Warning */}
-      <div className="rounded-xl bg-[rgba(220,38,38,0.12)] border border-[rgba(220,38,38,0.30)] p-4 mb-5">
-        <p className="text-sm text-[#F5F5F5]">⚠️ {protocol.instagramWarning}</p>
+      {/* Context Message */}
+      <div className="rounded-xl bg-[rgba(180,140,60,0.12)] border border-[rgba(180,140,60,0.30)] p-4 mb-5">
+        <p className="mb-1 text-xs font-medium text-white/50 uppercase tracking-wide">Why this matters right now</p>
+        <p className="text-sm text-[#F5F5F5]">💡 {protocol.contextMessage}</p>
       </div>
 
       <div className="border-t border-white/10 mb-6" />
@@ -95,7 +96,7 @@ export function FatigueCard({ protocol }: FatigueCardProps) {
         style={{ backgroundColor: protocol.ambientColor }}
       >
         <Play className="h-4 w-4" />
-        START MY 10-MIN DEFRAG
+        START MY {protocol.totalDuration}-MIN DEFRAG
       </button>
 
       <p className="text-center text-xs text-white/40 mt-3">

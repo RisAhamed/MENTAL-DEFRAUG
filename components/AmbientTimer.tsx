@@ -10,17 +10,24 @@ interface AmbientTimerProps {
   onSkip: () => void
 }
 
-const TOTAL_SECONDS = 600
-
 export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps) {
-  const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS)
+  const totalSeconds = protocol.totalDuration * 60
+  const step1End = Math.floor(totalSeconds * 0.7)
+  const step2End = Math.floor(totalSeconds * 0.3)
+
+  const [timeLeft, setTimeLeft] = useState(totalSeconds)
   const [isRunning] = useState(true)
   const [showComplete, setShowComplete] = useState(false)
+  const [showContextMessage, setShowContextMessage] = useState(false)
   const completedRef = useRef(false)
 
-  const currentStep = timeLeft > 420 ? 0 : timeLeft > 180 ? 1 : 2
+  const currentStep = timeLeft > step1End ? 0 : timeLeft > step2End ? 1 : 2
   const minutes = Math.floor(timeLeft / 60)
   const seconds = timeLeft % 60
+
+  const circumference = 2 * Math.PI * 120
+  const progress = timeLeft / totalSeconds
+  const dashOffset = circumference * progress
 
   useEffect(() => {
     let wakeLock: WakeLockSentinel | null = null
@@ -35,12 +42,14 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
 
     requestWakeLock()
 
+    const msgDelay = setTimeout(() => setShowContextMessage(true), 1000)
+
     return () => {
       wakeLock?.release()
+      clearTimeout(msgDelay)
     }
   }, [])
 
-  // Timer logic
   useEffect(() => {
     if (!isRunning) return
     if (timeLeft <= 0) return
@@ -58,7 +67,6 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
     return () => clearInterval(interval)
   }, [isRunning, timeLeft, onComplete])
 
-  // Check completion
   useEffect(() => {
     if (timeLeft !== 0 || completedRef.current) return
 
@@ -67,7 +75,7 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
 
     const completeDelay = setTimeout(() => {
       onComplete()
-    }, 2200)
+    }, 800)
 
     return () => clearTimeout(completeDelay)
   }, [timeLeft, onComplete])
@@ -75,7 +83,10 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
   const bgColor = `${protocol.ambientColor}D9`
 
   function handleSkipClick() {
-    const confirmed = window.confirm("Skip the defrag? You'll still earn 5 points.")
+    const minsLeft = Math.floor(timeLeft / 60)
+    const secsLeft = timeLeft % 60
+    const timeStr = `${minsLeft}:${secsLeft.toString().padStart(2, '0')}`
+    const confirmed = window.confirm(`Skip? You've got ${timeStr} left. Even finishing counts.`)
     if (confirmed) {
       onSkip()
     }
@@ -86,6 +97,32 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
       className="fixed inset-0 overflow-hidden max-w-full flex flex-col items-center justify-center ambient-transition"
       style={{ backgroundColor: bgColor, transitionDuration: '0.5s' }}
     >
+      {/* Breathing background animation */}
+      <motion.div
+        className="fixed inset-0"
+        animate={{ opacity: [0.85, 0.75, 0.85] }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        style={{ backgroundColor: protocol.ambientColor }}
+      />
+
+      {/* Circular progress arc */}
+      <svg width="280" height="280" className="absolute">
+        <circle cx="140" cy="140" r="120" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
+        <circle
+          cx="140"
+          cy="140"
+          r="120"
+          fill="none"
+          stroke="rgba(255,255,255,0.70)"
+          strokeWidth="3"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          strokeLinecap="round"
+          transform="rotate(-90 140 140)"
+          style={{ transition: 'stroke-dashoffset 1s linear' }}
+        />
+      </svg>
+
       {/* Step progress dots */}
       <div className="flex gap-3 mb-10">
         {protocol.steps.map((_, i) => (
@@ -105,27 +142,30 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
       </div>
 
       {/* Countdown */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={timeLeft}
-          initial={{ opacity: 1, scale: 1 }}
-          animate={{ scale: [1, 1.04, 1] }}
-          transition={{ duration: 0.3 }}
-          className="text-center"
-        >
+      <div className="text-center">
+        {showComplete ? (
+          <motion.p
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 300 }}
+            className="text-[clamp(3.5rem,16vw,5rem)] font-mono font-bold text-white tracking-widest"
+          >
+            ✓ Done
+          </motion.p>
+        ) : (
           <p className="text-[clamp(3.5rem,16vw,5rem)] font-mono font-bold text-white tracking-widest">
             {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
           </p>
-        </motion.div>
-      </AnimatePresence>
+        )}
+      </div>
 
-      {/* Current step card */}
+      {/* Current step card with step-aware color shift */}
       <div className="mt-10 w-full px-4 flex justify-center">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
-            initial={{ opacity: 0, x: 24 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, x: 24, backgroundColor: `${protocol.ambientColor}66` }}
+            animate={{ opacity: 1, x: 0, backgroundColor: `${protocol.ambientColor}40` }}
             exit={{ opacity: 0, x: -24 }}
             transition={{ duration: 0.2 }}
             className="w-full max-w-[280px] rounded-2xl bg-[rgba(0,0,0,0.25)] p-4"
@@ -137,6 +177,20 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
         </AnimatePresence>
       </div>
 
+      {/* Context Message at bottom */}
+      <AnimatePresence>
+        {showContextMessage && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            className="fixed bottom-16 mx-auto max-w-[260px] text-center text-xs text-white/50"
+          >
+            {protocol.contextMessage}
+          </motion.p>
+        )}
+      </AnimatePresence>
+
       {/* Skip button */}
       <button
         onClick={handleSkipClick}
@@ -145,13 +199,15 @@ export function AmbientTimer({ protocol, onComplete, onSkip }: AmbientTimerProps
         skip
       </button>
 
+      {/* Completion overlay */}
       <AnimatePresence>
         {showComplete && (
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            animate={{ opacity: 0.3 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm"
+            transition={{ duration: 0.6 }}
+            className="absolute inset-0 bg-white"
           >
             <motion.div
               initial={{ scale: 0.86, y: 18, opacity: 0 }}

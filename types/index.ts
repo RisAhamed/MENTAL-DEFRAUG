@@ -13,7 +13,8 @@ export interface DefragProtocol {
   fatigueType: FatigueType
   intensity: Intensity
   headline: string
-  instagramWarning: string
+  contextMessage: string
+  totalDuration: number
   steps: ProtocolStep[]
   ambientColor: string
 }

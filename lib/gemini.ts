@@ -13,7 +13,8 @@ const FALLBACK_PROTOCOL: DefragProtocol = {
   fatigueType: 'LOGIC',
   intensity: 'HEAVY',
   headline: 'Heavy Logic Fatigue',
-  instagramWarning: 'Opening Instagram now shifts your prefrontal cortex into reward-seeking mode, preventing the default mode network from restoring your depleted working memory.',
+  contextMessage: 'Your prefrontal cortex just ran a marathon — these 10 minutes let it actually consolidate what you built.',
+  totalDuration: 10,
   steps: [
     {
       duration: '0–3 min',
@@ -60,7 +61,7 @@ You are a neuroscience-backed cognitive recovery specialist with deep knowledge 
 A student just finished a session and described it as:
 "${userInput}"
 
-You MUST complete ALL four steps below. Do not skip any.
+You MUST complete ALL steps below. Do not skip any.
 
 STEP 1 — CLASSIFY FATIGUE TYPE
 Map the input to EXACTLY ONE of these four types:
@@ -76,15 +77,35 @@ Signals for HEAVY: "all day", "3+ hours", "completely blank", "fried", "exhauste
 Signals for MODERATE: "couple hours", "pretty tired", "need a break"
 Signals for LIGHT: "30 minutes", "quick session", "a bit tired"
 
-STEP 3 — WRITE THE INSTAGRAM WARNING
-One sentence that explains exactly what happens neurologically if they open Instagram or YouTube RIGHT NOW. Make it specific and slightly alarming so they feel the consequence. Reference the specific brain region affected.
+STEP 3 — DETERMINE TOTAL DURATION
+Based on intensity:
+- LIGHT → 5 (5 minutes total)
+- MODERATE → 7 (7 minutes total)
+- HEAVY → 10 (10 minutes total)
 
-STEP 4 — GENERATE THE 3-STEP RECOVERY PROTOCOL
+STEP 4 — WRITE THE CONTEXT MESSAGE
+Write ONE sentence that:
+- Acknowledges what the user JUST worked on specifically
+- Explains WHY this specific type of rest matters for them
+- Tone: calm, wise, like a smart friend who understands
+- Do NOT mention Instagram, YouTube, or social media
+- Do NOT use words: "alarming", "fry", "damage", "harm", "danger"
+- Do USE words that feel like understanding, not warning
+Examples:
+- For LOGIC/HEAVY: "Your prefrontal cortex just ran a marathon — these 10 minutes let it actually consolidate what you built."
+- For NARRATIVE/MODERATE: "The ideas you just processed need 7 quiet minutes to move from working memory into long-term storage."
+- For EMOTIONAL/LIGHT: "Your nervous system flagged some stress today — 5 minutes of stillness resets your baseline faster than any distraction."
+- For VISUAL/HEAVY: "Your visual cortex has been in overdrive — ambient rest without screens is the only thing that actually clears it."
+
+STEP 5 — GENERATE THE 3-STEP RECOVERY PROTOCOL
+Set step durations based on totalDuration:
+- For 5 min (LIGHT): steps are "0–2 min", "2–4 min", "4–5 min"
+- For 7 min (MODERATE): steps are "0–3 min", "3–5 min", "5–7 min"
+- For 10 min (HEAVY): steps are "0–3 min", "3–7 min", "7–10 min"
 Each step must be:
 - Hyper-specific (not "rest" — say exactly what position, duration, activity)
 - Include WHY it works for this specific fatigue type (one sentence, cite brain region)
 - Include one thing to AVOID during this step and why it sets back recovery
-Steps should be cumulative: 0-3 min, 3-7 min, 7-10 min
 
 AMBIENT COLOR RULES:
 - LOGIC → "#4CAF7D" (muted green — nature, movement, eyes forward)
@@ -97,22 +118,23 @@ Return ONLY this exact JSON structure, nothing else:
   "fatigueType": "LOGIC|NARRATIVE|VISUAL|EMOTIONAL",
   "intensity": "LIGHT|MODERATE|HEAVY",
   "headline": "2-4 word label e.g. Heavy Logic Fatigue",
-  "instagramWarning": "Single sentence about neurological consequence",
+  "contextMessage": "Single calm sentence acknowledging what they did",
+  "totalDuration": 5|7|10,
   "steps": [
     {
-      "duration": "0–3 min",
+      "duration": "0–X min",
       "action": "Extremely specific action with exact instructions",
       "why": "One sentence citing specific brain region and recovery mechanism",
       "avoid": "Specific thing to avoid and why it delays recovery"
     },
     {
-      "duration": "3–7 min",
+      "duration": "X–Y min",
       "action": "Extremely specific action",
       "why": "One sentence neuroscience explanation",
       "avoid": "Specific avoidance with reason"
     },
     {
-      "duration": "7–10 min",
+      "duration": "Y–Z min",
       "action": "Extremely specific action",
       "why": "One sentence neuroscience explanation",
       "avoid": "Specific avoidance with reason"
