@@ -3,22 +3,33 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { userId, firstName } = await request.json()
+    const { userId, firstName, digestEnabled } = await request.json()
 
-    if (!userId || typeof firstName !== 'string') {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-
-    const trimmedName = firstName.trim()
-    if (!trimmedName) {
-      return NextResponse.json({ error: 'Missing first name' }, { status: 400 })
+    if (!userId) {
+      return NextResponse.json({ error: 'Missing user ID' }, { status: 400 })
     }
 
     const supabase = createAdminClient()
+    const updates: Record<string, unknown> = {}
+
+    if (typeof firstName === 'string') {
+      const trimmedName = firstName.trim()
+      if (trimmedName) {
+        updates.first_name = trimmedName
+      }
+    }
+
+    if (typeof digestEnabled === 'boolean') {
+      updates.digest_enabled = digestEnabled
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
 
     const { error } = await supabase
       .from('users')
-      .update({ first_name: trimmedName })
+      .update(updates)
       .eq('id', userId)
 
     if (error) throw error

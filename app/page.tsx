@@ -90,13 +90,24 @@ export default function HomePage() {
           <Brain className="h-5 w-5 text-[#4CAF7D]" />
           <span className="font-semibold text-white">Mental Defrag</span>
         </div>
-        {userId ? (
-          <UserProfileChip userId={userId} />
-        ) : stats && stats.currentStreak > 0 ? (
-          <div className="flex items-center gap-1 text-xs text-white/50">
-            🔥 <span>{stats.currentStreak} day streak</span>
-          </div>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {stats && stats.totalSessions > 0 && (
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="min-h-[32px] px-3 rounded-full border border-white/15 text-sm text-white/70 hover:text-white"
+              title="View your dashboard"
+            >
+              📊
+            </button>
+          )}
+          {userId ? (
+            <UserProfileChip userId={userId} />
+          ) : stats && stats.currentStreak > 0 ? (
+            <div className="flex items-center gap-1 text-xs text-white/50">
+              🔥 <span>{stats.currentStreak} day streak</span>
+            </div>
+          ) : null}
+        </div>
       </header>
 
       {/* Hero */}
