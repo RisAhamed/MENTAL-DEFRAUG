@@ -8,6 +8,7 @@ import { FeelingCheck } from '@/components/FeelingCheck'
 import { EmailCapture } from '@/components/EmailCapture'
 import InsightCard from '@/components/InsightCard'
 import BrainSummary from '@/components/BrainSummary'
+import ShareCard from '@/components/ShareCard'
 import { getOrCreateAnonymousUser, getUserStats, getUserSessionCount } from '@/lib/user'
 import { BADGES } from '@/lib/badges'
 import { UserStats } from '@/types'
@@ -23,6 +24,8 @@ interface SessionResult {
   todaySessionCount?: number
   userEmail?: string | null
   saveFailed?: boolean
+  fatigueType?: string
+  firstName?: string
 }
 
 type BrainSummaryState = {
@@ -48,6 +51,7 @@ function DonePageContent() {
   const [firstName, setFirstName] = useState('')
   const [showNamePrompt, setShowNamePrompt] = useState(false)
   const [savedName, setSavedName] = useState<string | null>(null)
+  const [showShareCard, setShowShareCard] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -398,8 +402,75 @@ function DonePageContent() {
         >
           Start Another Defrag
         </button>
+        <button
+          onClick={() => setShowShareCard(true)}
+          className="w-full min-h-[52px] rounded-xl border border-white/15 bg-transparent text-[#F5F5F5] font-medium py-3 px-8 text-sm"
+        >
+          Share Your Streak 🔗
+        </button>
         <p className="text-xs text-white/30">Come back after your next heavy session</p>
       </section>
+
+      {/* Share Card Sheet */}
+      <AnimatePresence>
+        {showShareCard && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowShareCard(false)}
+              className="fixed inset-0 z-40 bg-black/70"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="fixed bottom-0 left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-[#1A1A1A] p-6"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[#F5F5F5]">Your Proof Card</h3>
+                <button
+                  onClick={() => setShowShareCard(false)}
+                  className="text-2xl text-white/40"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="mt-1 text-sm text-[#A0A0A0]">Screenshot this and share it</p>
+              <div className="mt-6 flex justify-center">
+                <div id="share-card-capture">
+                  <ShareCard
+                    firstName={savedName || result?.firstName || null}
+                    currentStreak={visibleStreak}
+                    totalPoints={stats?.totalPoints ?? 0}
+                    badges={result?.newBadges ?? []}
+                    dominantFatigueType={result?.fatigueType ?? null}
+                  />
+                </div>
+              </div>
+              <p className="mt-4 text-center text-sm text-white/40">
+                Screenshot the card above to share
+              </p>
+              {typeof navigator !== 'undefined' && navigator.share && (
+                <button
+                  onClick={() => {
+                    navigator.share({
+                      title: 'Mental Defrag',
+                      text: `I just defragged my brain 🧠 ${visibleStreak} day streak on Mental Defrag`,
+                      url: window.location.origin,
+                    })
+                  }}
+                  className="mt-4 w-full min-h-[52px] rounded-xl bg-[#4CAF7D] text-white font-semibold py-3 px-8 text-sm"
+                >
+                  Share →
+                </button>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </main>
   )
 }

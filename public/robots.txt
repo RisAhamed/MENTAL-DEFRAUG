@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /landing
+Allow: /$
+Disallow: /api/
+Disallow: /result
+Disallow: /timer
+Disallow: /done
+Disallow: /auth/
