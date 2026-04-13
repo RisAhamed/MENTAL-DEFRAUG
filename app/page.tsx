@@ -16,6 +16,12 @@ export default function HomePage() {
   const [error, setError] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
   const [stats, setStats] = useState<UserStats | null>(null)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [emailInput, setEmailInput] = useState('')
+  const [emailLoading, setEmailLoading] = useState(false)
+  const [emailSuccess, setEmailSuccess] = useState(false)
+  const [emailError, setEmailError] = useState('')
+  const [emailSentTo, setEmailSentTo] = useState('')
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -45,6 +51,20 @@ export default function HomePage() {
       } catch {}
     }
     init()
+  }, [])
+
+  useEffect(() => {
+    function handleOpenEmailCapture() {
+      setShowEmailModal(true)
+      setEmailInput('')
+      setEmailSuccess(false)
+      setEmailError('')
+      setEmailSentTo('')
+    }
+    window.addEventListener('open-email-capture', handleOpenEmailCapture)
+    return () => {
+      window.removeEventListener('open-email-capture', handleOpenEmailCapture)
+    }
   }, [])
 
   function getErrorMessage(status?: number) {
@@ -79,6 +99,44 @@ export default function HomePage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : getErrorMessage())
       setLoading(false)
+    }
+  }
+
+  async function handleEmailSave() {
+    const trimmed = emailInput.trim()
+    if (!trimmed || !trimmed.includes('@')) {
+      setEmailError('Please enter a valid email address')
+      return
+    }
+    if (!userId) {
+      setEmailError('Something went wrong. Please refresh and try again.')
+      return
+    }
+
+    setEmailLoading(true)
+    setEmailError('')
+
+    try {
+      const res = await fetch('/api/send-magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed, userId }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to send email')
+      }
+
+      setEmailSuccess(true)
+      setEmailSentTo(trimmed)
+      setEmailInput('')
+    } catch (err) {
+      setEmailError(
+        err instanceof Error ? err.message : 'Failed to send. Try again.'
+      )
+    } finally {
+      setEmailLoading(false)
     }
   }
 
@@ -214,6 +272,93 @@ export default function HomePage() {
               <p className="mt-1 text-xs text-white/60">This takes 2–3 seconds</p>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showEmailModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/70"
+              role="presentation"
+              onClick={() => {
+                setShowEmailModal(false)
+                setEmailError('')
+              }}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="email-capture-title"
+              className="fixed left-1/2 top-1/2 z-[60] w-[calc(100%-32px)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/12 bg-[#1A1A1A] p-5 shadow-2xl shadow-black/60"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEmailModal(false)
+                  setEmailError('')
+                }}
+                className="absolute right-4 top-3 text-lg text-white/50 hover:text-white"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+
+              <h2 id="email-capture-title" className="pr-8 text-lg font-semibold text-white">Save your streak across all devices</h2>
+              <p className="mt-1 text-sm text-white/60">We&apos;ll also send you a weekly brain performance summary.</p>
+
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-lg text-white">🔥 {stats?.currentStreak ?? 0}</p>
+                  <p className="text-xs text-white/55">current streak</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-lg text-white">⚡ {stats?.totalPoints ?? 0}</p>
+                  <p className="text-xs text-white/55">brain points</p>
+                </div>
+              </div>
+
+              {emailSuccess ? (
+                <div className="mt-4 rounded-xl border border-[#4CAF7D]/40 bg-[#4CAF7D]/10 p-3 text-sm text-[#CFF3DB]">
+                  ✅ Check your inbox for a magic link: <span className="font-medium">{emailSentTo}</span>
+                </div>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  <input
+                    value={emailInput}
+                    onChange={(event) => {
+                      setEmailInput(event.target.value)
+                      if (emailError) setEmailError('')
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        if (!emailLoading) void handleEmailSave()
+                      }
+                    }}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    className="min-h-[44px] w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus:border-[#4CAF7D] focus:outline-none"
+                  />
+                  {emailError && <p className="text-xs text-[#FCA5A5]">{emailError}</p>}
+                  <button
+                    type="button"
+                    disabled={emailLoading}
+                    onClick={() => void handleEmailSave()}
+                    className="min-h-[44px] w-full rounded-xl bg-[#4CAF7D] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#4CAF7D]/90 disabled:opacity-50"
+                  >
+                    {emailLoading ? 'Sending magic link...' : 'Send Magic Link'}
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </main>

@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { BADGES } from '@/lib/badges'
 
 interface UserProfileChipProps {
@@ -14,11 +15,13 @@ type HeaderStats = {
   email: string | null
   badges: string[]
   firstName?: string | null
+  totalSessions: number
 }
 
 const BADGE_MAP = Object.fromEntries(Object.values(BADGES).map((badge) => [badge.id, badge]))
 
 export default function UserProfileChip({ userId }: UserProfileChipProps) {
+  const router = useRouter()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [stats, setStats] = useState<HeaderStats | null>(null)
@@ -41,6 +44,7 @@ export default function UserProfileChip({ userId }: UserProfileChipProps) {
           email: data.stats?.email ?? null,
           badges: data.stats?.badges ?? [],
           firstName: data.stats?.firstName ?? data.stats?.first_name ?? null,
+          totalSessions: data.stats?.totalSessions ?? data.stats?.total_sessions ?? data.sessionCount ?? 0,
         })
       } catch {
         if (!cancelled) {
@@ -50,6 +54,7 @@ export default function UserProfileChip({ userId }: UserProfileChipProps) {
             email: null,
             badges: [],
             firstName: null,
+            totalSessions: 0,
           })
         }
       } finally {
@@ -97,6 +102,7 @@ export default function UserProfileChip({ userId }: UserProfileChipProps) {
   const totalPoints = stats?.totalPoints ?? 0
   const badges = stats?.badges ?? []
   const email = stats?.email ?? null
+  const totalSessions = stats?.totalSessions ?? 0
 
   const avatarLetter = hasName ? firstName?.charAt(0).toUpperCase() : '?'
 
@@ -166,6 +172,20 @@ export default function UserProfileChip({ userId }: UserProfileChipProps) {
                   )
                 })}
               </div>
+            )}
+
+            {totalSessions > 0 && (
+              <button
+                type="button"
+                aria-label="View dashboard"
+                onClick={() => {
+                  router.push('/dashboard')
+                  setIsOpen(false)
+                }}
+                className="mt-3 text-xs text-white/80 hover:text-white"
+              >
+                📊 View Dashboard →
+              </button>
             )}
 
             <div className="my-3 border-t border-[rgba(255,255,255,0.08)]" />
